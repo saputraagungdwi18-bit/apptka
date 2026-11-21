@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Simulasi TKA Sekolah</title>
+  <meta name="description" content="Aplikasi simulasi Tes Kemampuan Akademik (TKA) untuk sekolah.">
+  <meta name="theme-color" content="#1e3a5f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Simulasi TKA">
+  <meta name="robots" content="noindex">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- Percepat sambungan ke Google Apps Script -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Ikon baru ditampilkan setelah font ikon benar-benar termuat (mencegah teks ikon "bocor" saat offline/lambat).
+    (function () {
+      var d = document.documentElement;
+      if (!document.fonts || !document.fonts.load) { d.classList.add('fi'); return; }
+      document.fonts.load('24px "Material Symbols Outlined"', 'home').then(function (f) { if (f && f.length) d.classList.add('fi'); }).catch(function () {});
+    })();
+  </script>
+</head>
+<body>
+  <div id="app"><div class="login"><div class="login-card tc"><div class="sk" style="height:56px;width:56px;border-radius:14px;margin:0 auto"></div><p class="sm muted mt16">Memuat aplikasi…</p></div></div></div>
+  <noscript><p style="padding:24px">Aplikasi ini memerlukan JavaScript.</p></noscript>
+  <script>
+    // Nonaktifkan pinch-to-zoom dan zoom ganda-ketuk (iOS Safari mengabaikan meta viewport, jadi dicegah juga di sini).
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
+    document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    var lastT = 0; document.addEventListener('touchend', function (e) { var n = Date.now(); if (n - lastT < 300) e.preventDefault(); lastT = n; }, { passive: false });
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/siswa.js"></script>
+  <script src="js/guru.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
