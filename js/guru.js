@@ -7,6 +7,31 @@
   const mapelOpt = () => M().mapel.map(m => [m.id_mapel, m.nama_mapel]);
   const isAdmin = () => S.user && S.user.peran === 'admin';
 
+  // ---- hapus paket/jadwal yang sudah berisi data (hanya admin; permanen) ----
+  async function ringkasanHasil(kind, id) {
+    const r = await A.call('lap.get', kind === 'paket' ? { id_paket: id } : { id_paket: id.paket, id_jadwal: id.jadwal }, { read: true });
+    return { head: ['Peringkat', 'Nama', 'NISN', 'Kelas', 'Skor', 'Benar', 'Salah', 'Kosong', 'Durasi (mnt)', 'Status KKM'],
+      rows: r.rows.map((x, i) => [i + 1, x.nama, x.username, x.kelas, x.skor, x.benar, x.salah, x.kosong, x.durasi, x.lulus ? 'Lulus' : 'Belum']) };
+  }
+  function konfirmHapusData(o) {
+    const li = o.rincian.map(x => '<li>' + x + '</li>').join('');
+    const h = U.modal({ title: o.judul, sub: esc(o.nama), body:
+      '<div class="col g16"><div class="alert err">' + I('warning') + '<div><b>Tindakan ini tidak dapat dibatalkan.</b> Data berikut ikut terhapus permanen:<ul class="sm" style="margin:6px 0 0 18px">' + li + '</ul></div></div>' +
+      (o.peringatan ? '<div class="alert warn">' + I('warning') + '<span>' + o.peringatan + '</span></div>' : '') +
+      '<button class="btn sec" id="hcad">' + I('download') + 'Unduh ringkasan hasil dulu (CSV)</button>' +
+      '<div class="field"><label>Ketik <span class="mono b">' + esc(o.kode) + '</span> untuk konfirmasi</label><input class="input mono" id="hkf" autocomplete="off" autocapitalize="characters"></div></div>',
+      footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn danger off" id="hgo">' + I('delete_forever') + 'Hapus permanen</button>' });
+    const cek = () => h.$('#hgo').classList.toggle('off', h.$('#hkf').value.trim().toUpperCase() !== String(o.kode).toUpperCase());
+    h.$('#hkf').addEventListener('input', cek);
+    h.$('#hcad').onclick = async () => { try { const t = await ringkasanHasil(o.kind, o.idRingkas); U.download(o.berkas, U.csvBuild(t.head, t.rows)); } catch (e) { U.err(e); } };
+    h.$('#hgo').onclick = async () => {
+      const b = h.$('#hgo'); b.disabled = true;
+      try { await o.jalankan(); h.close(); U.toast(o.sukses, 'ok', 5000); }
+      catch (e) { b.disabled = false; U.err(e); }
+    };
+    setTimeout(() => h.$('#hkf').focus(), 40);
+  }
+
   // ============================================================ DASHBOARD GURU
   TKA.route('guru', 'dashboard', function (c) {
     c.live();
@@ -139,8 +164,23 @@
     D.swr('paket', draw).catch(e => U.err(e));
   });
   act.g_pdel = async el => {
-    if (!(await U.confirm('Hapus paket ini?', { danger: true, ok: 'Hapus' }))) return;
-    await A.call('paket.delete', { id_paket: el.dataset.id }); D.invalidate('paket'); await D.fetch('paket'); U.toast('Paket dihapus.', 'ok'); TKA.go('paket-ujian');
+    const id = el.dataset.id;
+    const pv = await A.call('paket.delete', { id_paket: id, pratinjau: true });
+    const isi = pv.jadwal + pv.sesi + pv.hasil;
+    if (!isi) {
+      if (!(await U.confirm('Hapus paket ini?', { danger: true, ok: 'Hapus' }))) return;
+      await A.call('paket.delete', { id_paket: id });
+      D.invalidate('paket'); D.invalidate('jadwal'); await D.fetch('paket'); D.fetch('jadwal').catch(() => {}); U.toast('Paket dihapus.', 'ok'); TKA.go('paket-ujian');
+      return;
+    }
+    if (!isAdmin()) return U.toast('Paket sudah dipakai (' + pv.jadwal + ' jadwal, ' + pv.hasil + ' hasil). Hubungi admin untuk menghapusnya.', 'warn', 6000);
+    konfirmHapusData({
+      judul: 'Hapus paket permanen', nama: pv.nama, kode: pv.kode, kind: 'paket', idRingkas: id, berkas: 'hasil-' + pv.kode + '.csv',
+      rincian: [pv.jadwal + ' jadwal ujian', pv.sesi + ' sesi pengerjaan (termasuk latihan)', pv.hasil + ' hasil & nilai siswa'],
+      peringatan: pv.jadwal ? 'Paket ini masih terjadwal. Jadwal dan peserta yang sedang mengerjakan akan dihentikan.' : '',
+      sukses: 'Paket dan seluruh hasilnya telah dihapus.',
+      jalankan: async () => { await A.call('paket.delete', { id_paket: id, paksa: true }); D.invalidate('paket'); D.invalidate('jadwal'); D.invalidate('soal'); await D.fetch('paket'); D.fetch('jadwal').catch(() => {}); TKA.refreshBoot().catch(() => {}); TKA.go('paket-ujian'); }
+    });
   };
   TKA.route(ST, 'paket-ujian/baru', c => paketForm(c, null, c.q.get('dup')));
   TKA.route(ST, 'paket-ujian/:id', c => paketForm(c, c.params.id));
@@ -217,8 +257,22 @@
   act.g_jnew = () => jForm(null);
   act.g_jedit = el => jForm((TKA._jl() || []).filter(j => j.id_jadwal === el.dataset.id)[0]);
   act.g_jdel = async el => {
-    if (!(await U.confirm('Hapus jadwal ini?', { danger: true, ok: 'Hapus' }))) return;
-    await A.call('jadwal.delete', { id_jadwal: el.dataset.id }); D.invalidate('jadwal'); await D.fetch('jadwal'); U.toast('Jadwal dihapus.', 'ok'); if (TKA._jd) TKA.go('jadwal');
+    const id = el.dataset.id;
+    const pv = await A.call('jadwal.delete', { id_jadwal: id, pratinjau: true });
+    if (!pv.peserta) {
+      if (!(await U.confirm('Hapus jadwal ini?', { danger: true, ok: 'Hapus' }))) return;
+      await A.call('jadwal.delete', { id_jadwal: id });
+      D.invalidate('jadwal'); await D.fetch('jadwal'); U.toast('Jadwal dihapus.', 'ok'); if (TKA._jd) TKA.go('jadwal');
+      return;
+    }
+    if (!isAdmin()) return U.toast('Jadwal sudah punya ' + pv.peserta + ' peserta. Hubungi admin untuk menghapusnya.', 'warn', 6000);
+    konfirmHapusData({
+      judul: 'Hapus jadwal permanen', nama: 'Jadwal ' + pv.kode, kode: pv.kode, kind: 'jadwal', idRingkas: { paket: pv.id_paket, jadwal: id }, berkas: 'hasil-' + pv.kode + '.csv',
+      rincian: [pv.peserta + ' peserta (sesi pengerjaan)', pv.hasil + ' hasil & nilai siswa'],
+      peringatan: pv.mengerjakan ? pv.mengerjakan + ' siswa sedang mengerjakan sekarang. Pekerjaan mereka akan terputus dan tidak dinilai.' : '',
+      sukses: 'Jadwal dan seluruh hasilnya telah dihapus.',
+      jalankan: async () => { await A.call('jadwal.delete', { id_jadwal: id, paksa: true }); D.invalidate('jadwal'); await D.fetch('jadwal'); TKA.refreshBoot().catch(() => {}); if (TKA._jd) TKA.go('jadwal'); }
+    });
   };
   function tokenBaru() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
   function jForm(j) {
