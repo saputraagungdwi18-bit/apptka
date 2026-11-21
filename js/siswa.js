@@ -88,7 +88,7 @@
       c.root.innerHTML = U.pageHead('Riwayat ujian', 'Semua hasil yang pernah Anda kerjakan.') +
         '<div class="card pad0"><div class="filters"><div class="grow"><input class="input" id="rq" placeholder="Cari paket atau mapel…" value="' + esc(rq) + '" data-i="s_rq" data-ev="input"></div></div>' +
         (pg.length ? '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Paket</th><th>Mapel</th><th>Skor</th><th>Benar / Salah / Kosong</th><th>Status</th><th></th></tr></thead><tbody>' +
-          pg.map(r => '<tr><td class="sm">' + U.tglJam(r.selesai) + '</td><td><b>' + esc(r.nama) + '</b><div class="xs muted">' + (r.resmi ? 'Ujian resmi' : 'Latihan') + '</div></td><td>' + esc(r.mapel) + '</td><td><b style="color:var(--primary-c);font-size:17px">' + r.skor + '</b></td><td class="sm">' + r.benar + ' / ' + r.salah + ' / ' + r.kosong + '</td><td>' + U.badge(r.lulus ? 'Lulus' : 'Belum lulus', r.lulus ? 'ok' : 'bad') + '</td><td class="tr"><button class="btn sec sm" data-go="hasil/' + r.id_sesi + '">Detail</button></td></tr>').join('') + '</tbody></table></div>' + U.pager(all.length, rpage, per, 's_rp')
+          pg.map(r => '<tr><td class="sm">' + U.tglJam(r.selesai) + '</td><td><b>' + esc(r.nama) + '</b><div class="xs muted">' + (r.resmi ? 'Ujian resmi' : 'Latihan') + '</div></td><td>' + esc(r.mapel) + '</td><td><b style="color:var(--primary-c);font-size:17px">' + (r.skor === null ? '—' : r.skor) + '</b></td><td class="sm">' + r.benar + ' / ' + r.salah + ' / ' + r.kosong + '</td><td>' + (r.skor === null ? U.badge('Menunggu', 'neu') : U.badge(r.lulus ? 'Lulus' : 'Belum lulus', r.lulus ? 'ok' : 'bad')) + '</td><td class="tr"><button class="btn sec sm" data-go="hasil/' + r.id_sesi + '">Detail</button></td></tr>').join('') + '</tbody></table></div>' + U.pager(all.length, rpage, per, 's_rp')
           : U.empty('history', 'Belum ada riwayat ujian', 'Hasil akan muncul setelah Anda mengumpulkan ujian.', '<a class="btn mt16" href="#/paket">Mulai latihan</a>')) + '</div>';
       const e = $('#rq'); if (e && rq) { e.focus(); e.setSelectionRange(rq.length, rq.length); }
     };
@@ -108,6 +108,10 @@
   });
 
   // ------------------------------------------------------------ Mulai / lanjutkan
+  function safeOn(pid, jid) {
+    const it = jid ? (B().jadwal || []).filter(j => j.id_jadwal === jid)[0] : (B().latihan || []).filter(l => l.id_paket === pid)[0];
+    return it && it.cfg ? !!it.cfg.safe : S.setting.safe_exam === '1';
+  }
   function fsOn() { const e = document.documentElement; try { (e.requestFullscreen || e.webkitRequestFullscreen || function () {}).call(e); } catch (x) {} }
   function fsOff() { try { if (document.fullscreenElement) document.exitFullscreen(); } catch (x) {} }
   function findItem(el) {
@@ -132,21 +136,21 @@
   }
   function startModal(pid, jid, needTok) {
     const it = (jid ? (B().jadwal || []).filter(j => j.id_jadwal === jid) : (B().latihan || []).filter(l => l.id_paket === pid))[0]; if (!it) return;
-    const tok = !!jid && (needTok || S.setting.wajib_token === '1');
-    const safe = S.setting.safe_exam === '1';
+    const cf = it.cfg || {}; const tok = !!jid && (needTok || !!cf.wajib_token);
+    const safe = cf.safe !== undefined ? !!cf.safe : S.setting.safe_exam === '1';
     const h = U.modal({ title: 'Konfirmasi mulai ujian', sub: esc(it.nama), body:
       '<div class="col g16"><div class="card flat soft"><div class="row sp sm"><span class="muted">Mata pelajaran</span><b>' + esc(it.mapel) + '</b></div><div class="row sp sm mt8"><span class="muted">Jumlah soal</span><b>' + it.jumlah_soal + '</b></div><div class="row sp sm mt8"><span class="muted">Durasi</span><b>' + it.durasi + ' menit</b></div><div class="row sp sm mt8"><span class="muted">KKM</span><b>' + it.kkm + '</b></div></div>' +
       (tok ? '<div class="field"><label>Token sesi ujian dari pengawas</label><input id="stk" class="input tokinp" maxlength="8" placeholder="• • • • • •" autocapitalize="characters" autocomplete="off"><span class="hint">Wajib diisi setiap kali memulai ujian terjadwal.</span></div>' : '') +
-      (safe ? '<div class="alert warn">' + I('shield') + '<div><b>Mode ujian aman aktif.</b> Berpindah tab/aplikasi atau keluar layar penuh dicatat sebagai pelanggaran. Setelah ' + (S.setting.batas_pelanggaran || 3) + ' pelanggaran, sesi dikunci sampai pengawas membukanya.</div></div>' : '') +
+      (safe ? '<div class="alert warn">' + I('shield') + '<div><b>Mode ujian aman aktif.</b> Berpindah tab/aplikasi atau keluar layar penuh dicatat sebagai pelanggaran. Setelah ' + (cf.batas || S.setting.batas_pelanggaran || 3) + ' pelanggaran, sesi dikunci sampai pengawas membukanya.</div></div>' : '') +
       '<label class="row g8 sm"><input type="checkbox" class="chk" id="sok"> Saya siap memulai ujian dan memahami tata tertib.</label></div>',
       footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn off" id="sgo" data-a="s_go" data-pid="' + pid + '" data-jid="' + (jid || '') + '" data-tok="' + (tok ? 1 : 0) + '">Mulai sekarang</button>' });
     h.$('#sok').addEventListener('change', e => h.$('#sgo').classList.toggle('off', !e.target.checked));
   }
   act.s_start = el => { if (!findItem(el)) return; startModal(el.dataset.pid, el.dataset.jid || ''); };
-  act.s_resume = el => { if (S.setting.safe_exam === '1') fsOn(); return beginExam(el.dataset.pid, el.dataset.jid || '', el); };
+  act.s_resume = el => { if (safeOn(el.dataset.pid, el.dataset.jid || '')) fsOn(); return beginExam(el.dataset.pid, el.dataset.jid || '', el); };
   act.s_go = async el => {
     const pid = el.dataset.pid, jid = el.dataset.jid;
-    if (S.setting.safe_exam === '1') fsOn();
+    if (safeOn(pid, jid)) fsOn();
     if (el.dataset.tok === '1') {
       const t = ($('#stk') || {}).value || '';
       if (!t.trim()) { fsOff(); return U.toast('Isi token sesi ujian terlebih dulu.', 'warn'); }
@@ -202,7 +206,7 @@
 
     function renderNav() {
       const ct = counts(), cls = i => 'qt' + (X.jw[ids[i]] ? ' ans' : '') + (X.ragu.has(ids[i]) ? ' flg' : '') + (i === X.idx ? ' cur' : '');
-      const grid = '<div class="qgrid">' + ids.map((_, i) => '<button class="' + cls(i) + '" data-a="x_go" data-n="' + i + '" aria-label="Soal ' + (i + 1) + '">' + (i + 1) + '</button>').join('') + '</div>';
+      const grid = '<div class="qgrid">' + ids.map((_, i) => '<button class="' + cls(i) + '" data-a="x_go" data-n="' + i + '" aria-label="Soal ' + (i + 1) + '"' + (!cfg.nav && i < X.idx ? ' disabled' : '') + '>' + (i + 1) + '</button>').join('') + '</div>';
       return '<div class="row sp"><h4>Navigasi soal</h4><span class="sm muted">' + ct.a + '/' + N + '</span></div>' + U.bar(N ? 100 * ct.a / N : 0, 'ok') + grid +
         '<div class="leg"><span><i style="background:var(--success)"></i>Dijawab</span><span><i></i>Belum</span><span><i style="background:var(--secondary)"></i>Ragu-ragu</span></div>' +
         '<div class="row sp sm mt16"><span class="muted">Terjawab</span><b>' + ct.a + '</b></div><div class="row sp sm"><span class="muted">Ragu-ragu</span><b>' + ct.r + '</b></div><div class="row sp sm"><span class="muted">Belum dijawab</span><b>' + ct.k + '</b></div>' +
@@ -210,14 +214,14 @@
     }
     function render() {
       const s = soal[X.idx], sel = X.jw[s.id], fl = X.ragu.has(s.id);
-      q('#exq').innerHTML = '<div class="ex-card"><div class="q-meta"><b class="bb" style="font-size:18px">Soal ' + s.no + ' <span class="muted b" style="font-size:14px">dari ' + N + '</span></b>' + U.badge(s.topik || 'Umum', 'neu') + U.kes(s.kesulitan) + '<span class="grow"></span>' +
+      q('#exq').innerHTML = '<div class="ex-card"><div class="q-meta"><b class="bb" style="font-size:18px">Soal ' + s.no + ' <span class="muted b" style="font-size:14px">dari ' + N + '</span></b>' + U.badge(s.topik || 'Umum', 'neu') + U.kes(s.kesulitan) + U.badge((s.poin || 1) + ' poin', 'info') + '<span class="grow"></span>' +
         '<div class="fsz" title="Ukuran huruf"><button data-a="x_fs" data-s="s" class="' + (X.fs === 's' ? 'on' : '') + '" style="font-size:12px">A</button><button data-a="x_fs" data-s="m" class="' + (X.fs === 'm' ? 'on' : '') + '" style="font-size:15px">A</button><button data-a="x_fs" data-s="l" class="' + (X.fs === 'l' ? 'on' : '') + '" style="font-size:19px">A</button></div>' +
         '<button class="btn flag sm' + (fl ? ' on' : '') + '" data-a="x_flag">' + I('flag', fl ? 'f sm' : 'sm') + (fl ? 'Ragu-ragu' : 'Tandai ragu') + '</button></div>' +
         '<div class="q-txt">' + U.teks(s.pertanyaan) + '</div>' + (U.safeImg(s.gambar) ? '<img class="q-img" src="' + esc(U.safeImg(s.gambar)) + '" alt="Gambar soal" loading="lazy">' : '') +
         '<div role="radiogroup" aria-label="Pilihan jawaban">' + s.opsi.map((o, k) => '<button class="opt' + (sel === o.k ? ' sel' : '') + '" role="radio" aria-checked="' + (sel === o.k) + '" data-a="x_pick" data-k="' + o.k + '"><span class="k">' + 'ABCDE'[k] + '</span><span class="grow">' + U.teks(o.t) + '</span></button>').join('') + '</div>' +
         '<div class="row mt16">' + (sel ? '<button class="btn ghost sm" data-a="x_clear">' + I('backspace', 'sm') + 'Hapus jawaban</button>' : '') + '</div></div>';
       q('#exnav').innerHTML = renderNav();
-      q('#xprev').disabled = X.idx === 0;
+      q('#xprev').disabled = X.idx === 0 || !cfg.nav;
       const last = X.idx === N - 1, nx = q('#xnext');
       nx.setAttribute('data-a', last ? 'x_finish' : 'x_next'); nx.innerHTML = '<span>' + (last ? 'Selesai' : 'Berikutnya') + '</span>' + I(last ? 'task_alt' : 'chevron_right');
       q('#xprog').textContent = counts().a + ' dari ' + N + ' terjawab';
@@ -322,7 +326,7 @@
     window.onbeforeunload = () => (X.submitting ? undefined : 'Ujian sedang berlangsung.');
 
     // ---- aksi ----
-    function go(n) { if (n < 0 || n >= N) return; X.idx = n; render(); }
+    function go(n) { if (n < 0 || n >= N) return; if (!cfg.nav && n < X.idx) return; X.idx = n; render(); }
     function pick(k) { const s = soal[X.idx]; X.jw[s.id] = k; touch(); render(); }
     function flag() { const s = soal[X.idx]; if (X.ragu.has(s.id)) X.ragu.delete(s.id); else X.ragu.add(s.id); touch(); render(); }
     Object.assign(act, {
@@ -392,16 +396,16 @@
       const sel = hFilter === 'semua' ? rv : rv.filter(r => hFilter === 'benar' ? r.jawaban === r.kunci : hFilter === 'salah' ? r.jawaban && r.jawaban !== r.kunci : hFilter === 'kosong' ? !r.jawaban : r.ragu);
       c.root.innerHTML = '<div class="row mb16"><a class="btn ghost sm" href="#/riwayat">' + I('arrow_back', 'sm') + 'Riwayat</a></div>' +
         '<div class="hero"><div class="row sp wrap"><div><div class="up" style="color:var(--on-primary-c)">' + esc(h.paket.mapel) + ' · ' + esc(h.paket.kode || '') + '</div><h2 style="color:#fff;margin-top:4px">' + esc(h.paket.nama) + '</h2><p class="sm" style="color:var(--on-primary-c)">Dikumpulkan ' + U.tglJam(h.selesai) + '</p></div>' +
-        '<span class="badge ' + (lulus ? 'ok' : 'bad') + '" style="font-size:13px;padding:6px 12px">' + (lulus ? 'Lulus KKM' : 'Belum lulus KKM') + '</span></div><div class="row g24 wrap mt16" style="align-items:flex-end"><div><div class="score">' + h.skor + '</div><div class="sm" style="color:var(--on-primary-c)">Skor skala 1000 · KKM ' + h.kkm + '</div></div>' +
-        (h.resmi ? '<div class="sm" style="color:#fff"><div class="bb" style="font-size:22px">#' + h.peringkat + '</div>peringkat dari ' + h.peserta + ' peserta</div>' : '') + '</div></div>' +
+        (h.skor === null ? '' : '<span class="badge ' + (lulus ? 'ok' : 'bad') + '" style="font-size:13px;padding:6px 12px">' + (lulus ? 'Lulus KKM' : 'Belum lulus KKM') + '</span>') + '</div><div class="row g24 wrap mt16" style="align-items:flex-end"><div><div class="score">' + (h.skor === null ? '—' : h.skor) + '</div><div class="sm" style="color:var(--on-primary-c)">Skor skala 1000 · KKM ' + h.kkm + '</div></div>' +
+        (h.resmi && h.skor !== null ? '<div class="sm" style="color:#fff"><div class="bb" style="font-size:22px">#' + h.peringkat + '</div>peringkat dari ' + h.peserta + ' peserta</div>' : '') + '</div></div>' +
         '<div class="grid gs4 keep2 mt16">' + U.stat('check_circle', h.benar, 'Benar', 'ok') + U.stat('cancel', h.salah, 'Salah', 'bad') + U.stat('radio_button_unchecked', h.kosong, 'Tidak dijawab') + U.stat('schedule', h.durasi + ' mnt', 'Waktu pengerjaan · akurasi ' + h.akurasi + '%') + '</div>' +
-        '<div class="grid g2 mt16" style="align-items:start"><div class="card"><h4 class="mb8">Perbandingan</h4>' + cmp('Skor Anda', h.skor, 'var(--primary-c)') + cmp('Rata-rata peserta', h.rata_paket, '#94a3b8') + cmp('Skor tertinggi', h.tertinggi, 'var(--success)') + cmp('KKM', h.kkm, 'var(--secondary)') + '</div>' +
+        '<div class="grid g2 mt16" style="align-items:start"><div class="card"><h4 class="mb8">' + (h.skor === null ? 'Ringkasan' : 'Perbandingan') + '</h4>' + cmp('Skor Anda', h.skor, 'var(--primary-c)') + cmp('Rata-rata peserta', h.rata_paket, '#94a3b8') + cmp('Skor tertinggi', h.tertinggi, 'var(--success)') + cmp('KKM', h.kkm, 'var(--secondary)') + '</div>' +
         '<div class="card"><h4 class="mb8">Diagnostik per topik</h4><div class="bars">' + ctop.map(t => '<div class="br"><span class="sm">' + esc(t.topik) + '</span>' + U.bar(t.pct) + '<b class="sm tr">' + t.pct + '%</b></div>').join('') + '</div>' +
         (ctop.length && ctop[0].pct < 70 ? '<div class="alert info mt16">' + I('lightbulb') + '<span>Fokus berikutnya: <b>' + esc(ctop.filter(t => t.pct < 70).slice(0, 2).map(t => t.topik).join(', ')) + '</b>.</span></div>' : '') + '</div></div>' +
         '<div class="card mt16"><div class="row sp wrap mb16"><h3>Pembahasan soal</h3>' + (h.pembahasan ? '<div class="chips">' + [['semua', 'Semua'], ['salah', 'Salah'], ['kosong', 'Kosong'], ['ragu', 'Ragu-ragu'], ['benar', 'Benar']].map(f => '<button class="chip' + (hFilter === f[0] ? ' on' : '') + '" data-a="s_hf" data-f="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>' : '') + '</div>' +
         (h.pembahasan ? (sel.length ? sel.map(rcard).join('') : U.empty('filter_alt', 'Tidak ada soal pada filter ini')) : '<div class="alert info">' + I('info') + '<span>Pembahasan belum dibuka oleh sekolah.</span></div>') + '</div>';
     };
-    const cmp = (l, v, col) => '<div class="br" style="display:grid;grid-template-columns:130px 1fr 44px;gap:10px;align-items:center;margin:10px 0;font-size:13px"><span class="sm">' + l + '</span><div class="progress"><i style="width:' + Math.min(100, v / 10) + '%;background:' + col + '"></i></div><b class="sm tr">' + v + '</b></div>';
+    const cmp = (l, v, col) => v === null ? '' : '<div class="br" style="display:grid;grid-template-columns:130px 1fr 44px;gap:10px;align-items:center;margin:10px 0;font-size:13px"><span class="sm">' + l + '</span><div class="progress"><i style="width:' + Math.min(100, v / 10) + '%;background:' + col + '"></i></div><b class="sm tr">' + v + '</b></div>';
     const rcard = r => '<div class="review-q"><div class="q-meta"><b>Soal ' + r.no + '</b>' + U.badge(r.topik, 'neu') + U.kes(r.kesulitan) + (r.jawaban === r.kunci ? U.badge('Benar', 'ok') : r.jawaban ? U.badge('Salah', 'bad') : U.badge('Kosong', 'neu')) + (r.ragu ? U.badge('Ragu-ragu', 'warn') : '') + '</div><div class="q-txt" style="--qs:16px">' + U.teks(r.pertanyaan) + '</div>' + (U.safeImg(r.gambar) ? '<img class="q-img" src="' + esc(U.safeImg(r.gambar)) + '" alt="">' : '') +
       r.opsi.map((o, k) => '<div class="opt rv ' + (o.k === r.kunci ? 'right' : o.k === r.jawaban ? 'wrong' : '') + '"><span class="k">' + 'ABCDE'[k] + '</span><span class="grow">' + U.teks(o.t) + '</span>' + (o.k === r.kunci ? I('check_circle', 'f') : o.k === r.jawaban ? I('cancel', 'f') : '') + '</div>').join('') +
       (r.pembahasan ? '<div class="pemb"><b>Pembahasan</b><div class="mt8">' + U.teks(r.pembahasan) + '</div></div>' : '') + '</div>';

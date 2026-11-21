@@ -89,7 +89,7 @@
   act.g_sbulkdel = () => delSoal(Array.from(SF.sel));
 
   // ---- form soal ----
-  const BLANK = { id_mapel: '', topik: '', kesulitan: 'Sedang', status: 'Draft', pertanyaan: '', gambar: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '', kunci: 'A', pembahasan: '' };
+  const BLANK = { id_mapel: '', topik: '', kesulitan: 'Sedang', status: 'Draft', poin: 1, pertanyaan: '', gambar: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', opsi_e: '', kunci: 'A', pembahasan: '' };
   TKA.route(ST, 'soal/baru', c => soalForm(c, null));
   TKA.route(ST, 'soal/:id', c => soalForm(c, c.params.id));
   async function soalForm(c, id) {
@@ -100,17 +100,62 @@
     const opts = ['a', 'b', 'c', 'd', 'e'].map(k => '<div class="row g8" style="align-items:flex-start"><label class="row g8" style="margin-top:8px;cursor:pointer" title="Jadikan kunci jawaban"><input type="radio" name="kunci" value="' + k.toUpperCase() + '" class="chk" data-i="g_fk"' + (f.kunci === k.toUpperCase() ? ' checked' : '') + '><b style="width:18px">' + k.toUpperCase() + '</b></label><textarea class="textarea grow" rows="1" style="min-height:40px" data-i="g_ff" data-ev="input" data-k="opsi_' + k + '" placeholder="Pilihan ' + k.toUpperCase() + (k === 'e' ? ' (opsional)' : '') + '">' + esc(f['opsi_' + k]) + '</textarea></div>').join('');
     c.root.innerHTML = '<div class="row mb16"><a class="btn ghost sm" href="#/soal">' + I('arrow_back', 'sm') + 'Bank soal</a></div>' + U.pageHead(id ? 'Ubah soal' : 'Tambah soal', 'Pilih kunci jawaban dengan tombol radio di samping pilihan.') +
       '<div class="grid" style="grid-template-columns:minmax(0,3fr) minmax(0,2fr);align-items:start" id="sfg"><div class="col g16">' +
-      '<div class="card col g16"><h4>Isi soal</h4><div class="grid g3"><div class="field"><label>Mata pelajaran</label><select class="select" data-i="g_ff" data-k="id_mapel">' + U.opt(mapelOpt(), f.id_mapel) + '</select></div><div class="field"><label>Topik</label><input class="input" list="tpk" data-i="g_ff" data-ev="input" data-k="topik" value="' + esc(f.topik) + '" placeholder="mis. Aljabar"><datalist id="tpk">' + topiks.map(t => '<option value="' + esc(t) + '">').join('') + '</datalist></div><div class="field"><label>Tingkat kesulitan</label><select class="select" data-i="g_ff" data-k="kesulitan">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], f.kesulitan) + '</select></div></div>' +
+      '<div class="card col g16"><h4>Isi soal</h4><div class="grid gs4 keep2"><div class="field"><label>Mata pelajaran</label><select class="select" data-i="g_ff" data-k="id_mapel">' + U.opt(mapelOpt(), f.id_mapel) + '</select></div><div class="field"><label>Topik</label><input class="input" list="tpk" data-i="g_ff" data-ev="input" data-k="topik" value="' + esc(f.topik) + '" placeholder="mis. Aljabar"><datalist id="tpk">' + topiks.map(t => '<option value="' + esc(t) + '">').join('') + '</datalist></div><div class="field"><label>Tingkat kesulitan</label><select class="select" data-i="g_ff" data-k="kesulitan">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], f.kesulitan) + '</select></div><div class="field"><label>Poin</label><input type="number" class="input" min="0.01" max="100" step="0.5" data-i="g_ff" data-ev="input" data-k="poin" value="' + esc(f.poin) + '"><span class="hint">Bobot skor soal ini.</span></div></div>' +
       '<div class="field"><label>Pertanyaan</label><textarea class="textarea" rows="5" data-i="g_ff" data-ev="input" data-k="pertanyaan" placeholder="Tulis pertanyaan…">' + esc(f.pertanyaan) + '</textarea><span class="hint">Awali baris dengan <code>$$ </code> untuk blok rumus, mis. <code>$$ f(x) = 2x³ − 5x + 1</code>. Gunakan **teks** untuk tebal. Simbol seperti √ ² ³ π ≤ dapat diketik langsung.</span></div>' +
-      '<div class="field"><label>URL gambar (opsional, https)</label><input class="input" data-i="g_ff" data-ev="input" data-k="gambar" value="' + esc(f.gambar) + '" placeholder="https://…"><span class="hint">Pakai tautan gambar publik (mis. dari Google Drive yang dibagikan).</span></div></div>' +
+      '<div class="field"><label>Gambar soal (opsional)</label><div id="gwrap">' + gambarBlok(f) + '</div></div></div>' +
       '<div class="card col g8"><h4>Pilihan jawaban</h4>' + opts + '</div><div class="card col g8"><h4>Pembahasan</h4><textarea class="textarea" rows="4" data-i="g_ff" data-ev="input" data-k="pembahasan" placeholder="Langkah penyelesaian…">' + esc(f.pembahasan) + '</textarea></div>' +
       '<div class="row sp wrap"><a class="btn ghost" href="#/soal">Batal</a><div class="row g8"><button class="btn sec" data-a="g_ssave" data-st="Draft">Simpan draf</button><button class="btn" data-a="g_ssave" data-st="Aktif">' + I('publish') + 'Simpan & aktifkan</button></div></div></div>' +
       '<div class="card" style="position:sticky;top:76px"><div class="up mb8">Pratinjau tampilan siswa</div><div id="spv"></div></div></div>';
     if (window.innerWidth < 960) $('#sfg').style.gridTemplateColumns = '1fr';
-    const pv = () => { $('#spv').innerHTML = '<div class="q-meta">' + U.badge(f.topik || 'Topik', 'neu') + U.kes(f.kesulitan) + '</div><div class="q-txt" style="--qs:15px;line-height:24px">' + (U.teks(f.pertanyaan) || '<span class="muted">Pertanyaan…</span>') + '</div>' + (U.safeImg(f.gambar) ? '<img class="q-img" src="' + esc(U.safeImg(f.gambar)) + '" alt="">' : '') +
+    const pv = () => { $('#spv').innerHTML = '<div class="q-meta">' + U.badge(f.topik || 'Topik', 'neu') + U.kes(f.kesulitan) + U.badge(String(f.poin || 1) + ' poin', 'info') + '</div><div class="q-txt" style="--qs:15px;line-height:24px">' + (U.teks(f.pertanyaan) || '<span class="muted">Pertanyaan…</span>') + '</div>' + (U.safeImg(f.gambar) ? '<img class="q-img" src="' + esc(U.safeImg(f.gambar)) + '" alt="">' : '') +
       ['a', 'b', 'c', 'd', 'e'].filter(k => String(f['opsi_' + k]).trim()).map((k, i) => '<div class="opt rv ' + (f.kunci === k.toUpperCase() ? 'right' : '') + '" style="--qs:14px;min-height:40px;padding:8px 12px"><span class="k">' + k.toUpperCase() + '</span><span class="grow">' + U.teks(f['opsi_' + k]) + '</span></div>').join('') + '<p class="xs muted mt8">Hijau = kunci jawaban (tidak tampil ke siswa).</p>'; };
-    TKA._sf = { f: f, id: id, pv: pv }; pv();
+    TKA._sf = { f: f, id: id, pv: pv }; pv(); bindGambar();
     return () => { TKA._sf = null; };
+  }
+  // ---- gambar soal: unggah (dikecilkan di peramban, lalu dikirim ke Google Drive) ----
+  function gambarBlok(f) {
+    return f.gambar
+      ? '<div class="row g16 wrap"><img src="' + esc(U.safeImg(f.gambar)) + '" alt="Gambar soal" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid var(--line)"><div class="col g8"><span class="sm muted">Gambar sudah terlampir</span><div class="row g8 wrap"><label class="btn sec sm" style="cursor:pointer">' + I('swap_horiz', 'sm') + 'Ganti<input type="file" id="gfile" accept="image/*" hidden></label><button class="btn dsec sm" id="gdel" type="button">' + I('delete', 'sm') + 'Hapus</button></div></div></div>'
+      : '<label class="dz" id="gdz" style="display:block"><input type="file" id="gfile" accept="image/*" hidden>' + I('add_photo_alternate', 'lg') + '<div class="b mt8">Unggah gambar soal</div><div class="sm muted">JPG, PNG, WEBP, atau GIF · otomatis dikecilkan</div></label>';
+  }
+  function kecilkanGambar(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(url);
+        const sc = Math.min(1, 1200 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+        const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.85));
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Berkas tidak dapat dibaca sebagai gambar.')); };
+      im.src = url;
+    });
+  }
+  async function unggahGambar(file) {
+    if (!/^image\//.test(file.type)) throw new Error('Pilih berkas gambar (JPG, PNG, WEBP, atau GIF).');
+    if (file.size > 12 * 1024 * 1024) throw new Error('Ukuran berkas terlalu besar. Maksimal 12 MB sebelum dikecilkan.');
+    const data = (await kecilkanGambar(file)).split(',')[1];
+    const j = await A.call('soal.upload', { mime: 'image/jpeg', nama: file.name.replace(/\.[^.]+$/, ''), data: data }, { timeout: 60000, retry: 0 });
+    return j.url;
+  }
+  function bindGambar() {
+    const wrap = $('#gwrap'); if (!wrap || !TKA._sf) return;
+    const F = TKA._sf;
+    const set = () => { wrap.innerHTML = gambarBlok(F.f); bindGambar(); F.pv(); };
+    const upload = async file => {
+      wrap.innerHTML = '<div class="row g8 sm">' + I('sync') + '<span>Mengunggah gambar…</span></div>';
+      try { F.f.gambar = await unggahGambar(file); set(); U.toast('Gambar berhasil diunggah.', 'ok'); }
+      catch (e) { set(); U.err(e); }
+    };
+    const fi = $('#gfile'); if (fi) fi.onchange = () => { if (fi.files[0]) upload(fi.files[0]); };
+    const dz = $('#gdz');
+    if (dz) {
+      ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('on'); }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('on'); }));
+      dz.addEventListener('drop', e => { const f0 = e.dataTransfer.files[0]; if (f0) upload(f0); });
+    }
+    const del = $('#gdel'); if (del) del.onclick = () => { F.f.gambar = ''; set(); };
   }
   inp.g_ff = el => { if (!TKA._sf) return; TKA._sf.f[el.dataset.k] = el.value; TKA._sf.pv(); };
   inp.g_fk = el => { if (!TKA._sf) return; TKA._sf.f.kunci = el.value; TKA._sf.pv(); };
@@ -153,6 +198,24 @@
   };
 
   // ============================================================ PAKET UJIAN
+  // ---- pengaturan ujian per paket (dibaca & ditulis dari formulir paket) ----
+  function pengHtml(p) {
+    p = p || {};
+    const cb = (id, on, lbl, tip) => '<label class="row g12" style="align-items:flex-start;cursor:pointer"><span class="sw" style="margin-top:2px"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><i></i></span><span><b class="sm">' + lbl + '</b><br><span class="xs muted">' + tip + '</span></span></label>';
+    return '<div class="card col g16 mb16"><h4>Pengaturan ujian</h4><p class="xs muted" style="margin-top:-8px">Berlaku untuk paket ini. Admin atau pemilik paket yang dapat mengubahnya.</p>' +
+      '<div class="grid g2" style="gap:14px 24px">' +
+      cb('pnb', p.navigasi_bebas !== false, 'Navigasi bebas', 'Siswa boleh kembali ke soal sebelumnya. Jika dimatikan, hanya maju.') +
+      cb('pts', p.tampil_skor !== false, 'Tampilkan skor ke siswa', 'Jika dimatikan, siswa hanya melihat pesan bahwa nilai akan diumumkan.') +
+      cb('ptp', !!p.tampil_pembahasan, 'Tampilkan pembahasan', 'Siswa dapat membaca kunci dan pembahasan setelah mengumpulkan.') +
+      cb('psf', !!p.safe_exam, 'Mode ujian aman', 'Pindah tab atau keluar layar penuh dicatat sebagai pelanggaran.') +
+      cb('pwt', !!p.wajib_token, 'Wajib token sesi', 'Siswa harus mengisi token dari pengawas setiap kali memulai ujian terjadwal.') +
+      '<label class="col g4 sm"><b>Batas pelanggaran</b><input class="input" type="number" min="1" max="10" id="pbt" value="' + esc(p.batas_pelanggaran || 3) + '" style="width:120px"><span class="xs muted">Sesi dikunci setelah jumlah ini (1–10).</span></label>' +
+      '</div></div>';
+  }
+  function pengBaca() {
+    return { navigasi_bebas: $('#pnb').checked, tampil_skor: $('#pts').checked, tampil_pembahasan: $('#ptp').checked, safe_exam: $('#psf').checked, wajib_token: $('#pwt').checked, batas_pelanggaran: Number($('#pbt').value) };
+  }
+
   TKA.route(ST, 'paket-ujian', function (c) {
     c.live();
     const draw = list => {
@@ -198,8 +261,8 @@
       '<div class="card col g16 mb16"><div class="grid g3"><div class="field" style="grid-column:span 2"><label>Nama paket</label><input class="input" id="pnm" value="' + esc(P.nama) + '" placeholder="mis. Simulasi TKA Matematika 01"></div><div class="field"><label>Mata pelajaran</label><select class="select" id="pmp">' + U.opt([['CAMPUR', 'Campuran']].concat(mapelOpt()), P.id_mapel) + '</select></div></div>' +
       '<div class="grid gs4"><div class="field"><label>Jenis</label><select class="select" id="pjn">' + U.opt([['Latihan', 'Latihan mandiri'], ['Resmi', 'Ujian resmi (dijadwalkan)']], P.jenis) + '</select></div><div class="field"><label>Durasi (menit)</label><input class="input" type="number" id="pdr" min="5" max="300" value="' + P.durasi + '"></div><div class="field"><label>KKM (0–1000)</label><input class="input" type="number" id="pkk" min="0" max="1000" value="' + P.kkm + '"></div><div class="field"><label>Status</label><select class="select" id="pst">' + U.opt([['Draft', 'Draft'], ['Terpublikasi', 'Terpublikasi']], P.status) + '</select></div></div>' +
       '<div class="field"><label>Deskripsi singkat (opsional)</label><input class="input" id="pds" value="' + esc(P.deskripsi) + '" maxlength="300"></div><div class="row g24 wrap sm"><label class="row g8"><span class="sw"><input type="checkbox" id="pas"' + (P.acak_soal ? ' checked' : '') + '><i></i></span>Acak urutan soal</label><label class="row g8"><span class="sw"><input type="checkbox" id="pao"' + (P.acak_opsi ? ' checked' : '') + '><i></i></span>Acak urutan pilihan</label></div></div>' +
-      '<div class="grid g2" style="align-items:start" id="pbg"><div class="card pad0"><div class="card-h"><h4>Pilih soal</h4><span class="sm muted" id="pcnt"></span></div><div class="filters"><div class="grow"><input class="input" placeholder="Cari…" data-i="g_pf" data-k="q" data-ev="input"></div><select class="select" data-i="g_pf" data-k="mapel">' + U.opt(mapelOpt(), '', 'Semua mapel') + '</select><select class="select" data-i="g_pf" data-k="kes">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], '', 'Semua tingkat') + '</select></div><div class="sel-list" id="ppick" style="border:0;border-radius:0"></div></div>' +
-      '<div class="card pad0"><div class="card-h"><h4>Soal terpilih</h4><span class="badge info" id="psel"></span></div><div style="padding:12px;max-height:520px;overflow-y:auto"><ol class="ord" id="pord"></ol></div></div></div>' +
+      pengHtml(P.pengaturan) + '<div class="grid g2" style="align-items:start" id="pbg"><div class="card pad0"><div class="card-h"><h4>Pilih soal</h4><span class="sm muted" id="pcnt"></span></div><div class="filters"><div class="grow"><input class="input" placeholder="Cari…" data-i="g_pf" data-k="q" data-ev="input"></div><select class="select" data-i="g_pf" data-k="mapel">' + U.opt(mapelOpt(), '', 'Semua mapel') + '</select><select class="select" data-i="g_pf" data-k="kes">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], '', 'Semua tingkat') + '</select></div><div class="sel-list" id="ppick" style="border:0;border-radius:0"></div></div>' +
+      '<div class="card pad0"><div class="card-h"><h4>Soal terpilih</h4><span class="badge info" id="psel"></span><span class="sm muted" id="ptot"></span></div><div style="padding:12px;max-height:520px;overflow-y:auto"><ol class="ord" id="pord"></ol></div></div></div>' +
       '<div class="row sp wrap mt16"><a class="btn ghost" href="#/paket-ujian">Batal</a><button class="btn" data-a="g_psave">' + I('save') + 'Simpan paket</button></div>';
     if (window.innerWidth < 900) $('#pbg').style.gridTemplateColumns = '1fr';
     const drawPick = () => {
@@ -207,23 +270,36 @@
       $('#ppick').innerHTML = f.slice(0, PF.lim).map(s => '<label><input type="checkbox" class="chk" data-a="g_ppick" data-id="' + s.id_soal + '"' + (sel.indexOf(s.id_soal) > -1 ? ' checked' : '') + (s.status !== 'Aktif' && sel.indexOf(s.id_soal) < 0 ? ' disabled' : '') + '><div class="grow"><div class="sm">' + esc(s.ringkas) + '</div><div class="xs muted">' + esc(mapelNm(s.id_mapel)) + ' · ' + esc(s.topik) + ' ' + U.kes(s.kesulitan) + (s.status !== 'Aktif' ? ' ' + U.badge('Draft', 'neu') : '') + '</div></div></label>').join('') + (f.length > PF.lim ? '<div class="tc" style="padding:10px"><button class="btn sec sm" data-a="g_pmore">Tampilkan lebih banyak (' + (f.length - PF.lim) + ')</button></div>' : '') || '<div class="empty sm">Tidak ada soal.</div>';
       $('#pcnt').textContent = f.length + ' soal';
     };
+    const poinM = Object.assign({}, P.poin || {});
+    const poinOf = i => (poinM[i] !== undefined && poinM[i] !== '' ? Number(poinM[i]) : (by[i] ? Number(by[i].poin || 1) : 1));
+    const totPoin = () => Math.round(sel.reduce((a, i) => a + poinOf(i), 0) * 100) / 100;
     const drawSel = () => {
       $('#psel').textContent = sel.length + ' soal';
-      $('#pord').innerHTML = sel.map((i, n) => '<li><span class="n">' + (n + 1) + '</span><div class="grow sm">' + esc((by[i] || { ringkas: '(soal hilang)' }).ringkas) + '</div><button class="ibtn" data-a="g_pup" data-n="' + n + '"' + (n === 0 ? ' disabled' : '') + '>' + I('arrow_upward', 'sm') + '</button><button class="ibtn" data-a="g_pdn" data-n="' + n + '"' + (n === sel.length - 1 ? ' disabled' : '') + '>' + I('arrow_downward', 'sm') + '</button><button class="ibtn dng" data-a="g_prm" data-id="' + i + '">' + I('close', 'sm') + '</button></li>').join('') || '<li class="muted sm" style="border:0;justify-content:center">Belum ada soal dipilih</li>';
+      $('#ptot').textContent = 'Total poin: ' + totPoin();
+      $('#pord').innerHTML = sel.map((i, n) => '<li><span class="n">' + (n + 1) + '</span><div class="grow sm">' + esc((by[i] || { ringkas: '(soal hilang)' }).ringkas) + (by[i] ? '<div class="xs muted">' + esc(by[i].topik) + '</div>' : '') + '</div>' +
+        '<input type="number" class="input" style="width:76px;height:34px" min="0.01" max="100" step="0.5" value="' + esc(poinOf(i)) + '" data-i="g_pp" data-id="' + i + '" aria-label="Poin soal ' + (n + 1) + '">' +
+        '<button class="ibtn" data-a="g_pup" data-n="' + n + '"' + (n === 0 ? ' disabled' : '') + '>' + I('arrow_upward', 'sm') + '</button><button class="ibtn" data-a="g_pdn" data-n="' + n + '"' + (n === sel.length - 1 ? ' disabled' : '') + '>' + I('arrow_downward', 'sm') + '</button><button class="ibtn dng" data-a="g_prm" data-id="' + i + '">' + I('close', 'sm') + '</button></li>').join('') || '<li class="muted sm" style="border:0;justify-content:center">Belum ada soal dipilih</li>';
     };
-    TKA._pf = { sel: sel, PF: PF, drawPick: drawPick, drawSel: drawSel, id: id };
+    TKA._pf = { sel: sel, PF: PF, drawPick: drawPick, drawSel: drawSel, id: id, poin: poinM, poinOf: poinOf, totPoin: totPoin };
     drawPick(); drawSel();
     return () => { TKA._pf = null; };
   }
   inp.g_pf = U.debounce(el => { if (!TKA._pf) return; TKA._pf.PF[el.dataset.k] = el.value; TKA._pf.PF.lim = 60; TKA._pf.drawPick(); }, 150);
   act.g_pmore = () => { TKA._pf.PF.lim += 60; TKA._pf.drawPick(); };
-  act.g_ppick = el => { const F = TKA._pf, i = el.dataset.id, k = F.sel.indexOf(i); if (el.checked && k < 0) F.sel.push(i); else if (!el.checked && k > -1) F.sel.splice(k, 1); F.drawSel(); };
+  act.g_ppick = el => {
+    const F = TKA._pf, i = el.dataset.id, k = F.sel.indexOf(i);
+    if (el.checked && k < 0) { F.sel.push(i); if (F.poin[i] === undefined) { const so = (D.peek('soal') || []).filter(x => x.id_soal === i)[0]; F.poin[i] = so ? so.poin : 1; } }
+    else if (!el.checked && k > -1) F.sel.splice(k, 1);
+    F.drawSel();
+  };
+  inp.g_pp = el => { if (!TKA._pf) return; TKA._pf.poin[el.dataset.id] = el.value; const t = $('#ptot'); if (t) t.textContent = 'Total poin: ' + TKA._pf.totPoin(); };
   act.g_prm = el => { const F = TKA._pf, k = F.sel.indexOf(el.dataset.id); if (k > -1) F.sel.splice(k, 1); F.drawSel(); F.drawPick(); };
   const mv = (n, d) => { const F = TKA._pf, a = F.sel; const t = a[n]; a[n] = a[n + d]; a[n + d] = t; F.drawSel(); };
   act.g_pup = el => mv(Number(el.dataset.n), -1); act.g_pdn = el => mv(Number(el.dataset.n), 1);
   act.g_psave = async el => {
     const F = TKA._pf; if (!F) return;
     const body = { nama: $('#pnm').value, id_mapel: $('#pmp').value, jenis: $('#pjn').value, durasi: Number($('#pdr').value), kkm: Number($('#pkk').value), status: $('#pst').value, deskripsi: $('#pds').value, acak_soal: $('#pas').checked, acak_opsi: $('#pao').checked, daftar_soal: F.sel };
+    body.poin = F.poin; body.pengaturan = pengBaca();
     if (F.id) body.id_paket = F.id;
     el.disabled = true;
     try { await A.call('paket.save', body); D.invalidate('paket'); await D.fetch('paket'); U.toast('Paket tersimpan.', 'ok'); TKA.go('paket-ujian'); } catch (e) { el.disabled = false; U.err(e); }
