@@ -42,7 +42,7 @@
     const st = S.setting, nm = st.nama_sekolah || 'Simulasi TKA';
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !navigator.standalone;
     document.getElementById('app').innerHTML =
-      '<div class="and"><header class="and-top"><span class="logo">' + I('school', 'f') + '</span>' +
+      '<div class="and"><header class="and-top">' + U.logoEl(S.setting.logo_url, '68px') + '' +
       '<h1>SIMULASI TKA</h1><p id="lsub">' + esc(nm) + (st.tahun_ajaran ? ' · ' + esc(st.tahun_ajaran) : '') + '</p></header>' +
       '<main class="and-sheet"><div class="seg" id="lseg"><button data-a="l_role" data-r="siswa" class="on">Siswa</button><button data-a="l_role" data-r="guru">Pengawas</button><button data-a="l_role" data-r="admin">Admin</button></div>' +
       '<div id="lerr" class="alert err hide"></div><div class="col g16" id="lform"></div>' +
@@ -102,7 +102,7 @@
   const NAV = {
     siswa: [['beranda', 'home', 'Beranda'], ['paket', 'assignment', 'Daftar Paket'], ['riwayat', 'history', 'Riwayat'], ['bantuan', 'help', 'Bantuan']],
     guru: [['dashboard', 'dashboard', 'Dashboard'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis']],
-    admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['kelas-mapel', 'school', 'Kelas & Mapel'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
+    admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['cetak', 'id_card', 'Cetak Kartu & Download Data Pengguna'], ['kelas-mapel', 'school', 'Kelas & Mapel'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
   };
   function ensureShell() {
     const role = S.user.peran, app = document.getElementById('app');
@@ -110,18 +110,18 @@
     app.dataset.shell = role;
     const nm = S.setting.nama_sekolah || 'Simulasi TKA', links = NAV[role];
     if (role === 'siswa') {
-      app.innerHTML = '<header class="top"><div class="brand"><span class="logo" style="width:36px;height:36px;border-radius:10px">' + I('school', 'f') + '</span><span class="t">' + esc(nm) + '</span></div>' +
+      app.innerHTML = '<header class="top"><div class="brand">' + U.logoEl(S.setting.logo_url, '36px') + '<span class="t">' + esc(nm) + '</span></div>' +
         '<nav>' + links.map(l => '<a href="#/' + l[0] + '" data-nav="' + l[0] + '">' + I(l[1], 'sm') + l[2] + '</a>').join('') + '</nav>' +
-        '<div class="me"><span class="nm">' + esc(S.user.nama) + '</span><span class="avatar">' + esc(U.initials(S.user.nama)) + '</span><button class="ibtn" data-a="logout" aria-label="Keluar" title="Keluar">' + I('logout') + '</button></div></header>' +
+        '<div class="me"><span class="nm">' + esc(S.user.nama) + '</span><span class="avatar fotobtn" data-a="foto_me" role="button" aria-label="Foto profil" style="cursor:pointer">' + U.fotoEl(S.user, 36) + '</span><button class="ibtn" data-a="logout" aria-label="Keluar" title="Keluar">' + I('logout') + '</button></div></header>' +
         '<main id="view" class="page"></main>' +
         '<nav class="bnav">' + links.map(l => '<a href="#/' + l[0] + '" data-nav="' + l[0] + '">' + I(l[1]) + '<span>' + l[2].replace('Daftar ', '') + '</span></a>').join('') + '</nav>';
     } else {
       const sub = role === 'admin' ? 'Panel Administrator' : 'Portal Guru & Pengawas';
-      app.innerHTML = '<aside class="side" id="side"><div class="brand"><span class="logo" style="width:38px;height:38px;border-radius:10px">' + I('school', 'f') + '</span><div>SIMULASI TKA<small>' + sub + '</small></div></div>' +
+      app.innerHTML = '<aside class="side" id="side"><div class="brand">' + U.logoEl(S.setting.logo_url, '38px') + '<div>SIMULASI TKA<small>' + sub + '</small></div></div>' +
         '<nav>' + links.map(l => '<a href="#/' + l[0] + '" data-nav="' + l[0] + '">' + I(l[1]) + '<span>' + l[2] + '</span></a>').join('') + '</nav>' +
         '<div class="foot"><button data-a="logout">' + I('logout') + 'Keluar</button></div></aside><div class="scrim" id="scrim" data-a="menu"></div>' +
         '<div class="stf"><div class="sbar"><button class="ibtn menu" data-a="menu" aria-label="Menu">' + I('menu') + '</button><div class="grow"><b>' + esc(nm) + '</b><span class="sm muted hm2"> · ' + esc(S.setting.tahun_ajaran || '') + '</span></div>' +
-        '<span class="sm muted nm" style="display:none"></span><div class="row g8"><div class="who" style="text-align:right;line-height:18px"><div class="sm b">' + esc(S.user.nama) + '</div><div class="xs muted">' + (role === 'admin' ? 'Administrator' : 'Guru / Pengawas') + '</div></div><span class="avatar">' + esc(U.initials(S.user.nama)) + '</span></div></div>' +
+        '<span class="sm muted nm" style="display:none"></span><div class="row g8"><div class="who" style="text-align:right;line-height:18px"><div class="sm b">' + esc(S.user.nama) + '</div><div class="xs muted">' + (role === 'admin' ? 'Administrator' : 'Guru / Pengawas') + '</div></div><span class="avatar fotobtn" data-a="foto_me" role="button" aria-label="Foto profil" style="cursor:pointer">' + U.fotoEl(S.user, 36) + '</span></div></div>' +
         '<main id="view" class="page"></main></div>';
     }
   }
@@ -197,6 +197,33 @@
     add(null, 'Layar', window.innerWidth + '×' + window.innerHeight + ' px');
     const b = h.$('#ujb'); if (b) b.innerHTML = rows.join('');
   };
+  TKA.refreshShell = () => { const app = document.getElementById('app'); app.dataset.shell = ''; ensureShell(); route(); };
+  // Dialog foto profil: pengguna mengubah fotonya sendiri; admin juga dapat mengubah foto siapa pun.
+  TKA.fotoModal = function (u, self, onDone) {
+    const h = U.modal({ title: 'Foto profil', sub: esc(u.nama), body:
+      '<div class="col g16" style="align-items:center"><div id="fpv">' + U.fotoEl(u, 120) + '</div>' +
+      '<div class="row g8 wrap" style="justify-content:center"><label class="btn sec" style="cursor:pointer">' + I('upload') + 'Unggah foto<input type="file" id="ffile" accept="image/*" hidden></label>' + (u.foto ? '<button class="btn dsec" id="fdel">' + I('delete') + 'Hapus foto</button>' : '') + '</div>' +
+      '<p class="xs muted tc">Tanpa foto, aplikasi menampilkan avatar default. Foto dikecilkan dan dipotong persegi secara otomatis.</p></div>',
+      footer: '<button class="btn" data-a="m_close">Selesai</button>' });
+    const done = foto => {
+      u.foto = foto;
+      if (self) { S.user.foto = foto; if (S.boot && S.boot.profil) S.boot.profil.foto = foto; saveAuth(); }
+      U.toast(foto ? 'Foto profil diperbarui.' : 'Foto dihapus. Avatar default digunakan.', 'ok');
+      h.close(); if (onDone) onDone(); if (self) TKA.refreshShell();
+    };
+    h.$('#ffile').onchange = async ev => {
+      const f = ev.target.files[0]; if (!f) return;
+      try {
+        const data = (await U.kecilkanGambar(f, 320, true)).split(',')[1];
+        const body = { mime: 'image/jpeg', nama: 'foto', data: data }; if (!self) body.id = u.id;
+        const j = await A.call('pengguna.foto', body, { timeout: 60000, retry: 0 });
+        done(j.foto);
+      } catch (e) { U.err(e); }
+    };
+    const del = h.$('#fdel');
+    if (del) del.onclick = async () => { try { const body = { hapus: true }; if (!self) body.id = u.id; await A.call('pengguna.foto', body); done(''); } catch (e) { U.err(e); } };
+  };
+  TKA.actions.foto_me = () => TKA.fotoModal(S.user, true);
   TKA.actions.l_role = el => loginForm(el.dataset.r);
   TKA.actions.l_eye = el => { const p = $('#lp'); p.type = p.type === 'password' ? 'text' : 'password'; el.querySelector('.i').textContent = p.type === 'password' ? 'visibility' : 'visibility_off'; };
   TKA.actions.l_go = doLogin;

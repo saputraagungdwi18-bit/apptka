@@ -50,6 +50,37 @@
   };
   U.safeImg = u => (/^https:\/\//i.test(u || '') ? u : '');
 
+  // ---- avatar & logo ----
+  // Avatar default sistem: siluet netral. Dipakai bila foto kosong atau gagal dimuat.
+  U.defAv = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23d6e2f2'/><circle cx='32' cy='25' r='11' fill='%231e3a5f'/><path d='M12 56c2-11 11-17 20-17s18 6 20 17' fill='%231e3a5f'/></svg>";
+  U.fotoEl = (u, px) => {
+    const src = U.safeImg(u && u.foto), s = px || 36;
+    return '<span class="avatar ph" style="width:' + s + 'px;height:' + s + 'px"><img alt="" src="' + esc(src || U.defAv) + '"' + (src ? ' onerror="this.onerror=null;this.src=TKA.ui.defAv"' : '') + '></span>';
+  };
+  U.logoEl = (url, size) => {
+    const src = U.safeImg(url), s = size || '36px';
+    return '<span class="logo' + (src ? ' has-img' : '') + '" style="width:' + s + ';height:' + s + ';border-radius:' + (parseInt(s, 10) > 48 ? '18px' : '10px') + '">' + (src ? '<img alt="Logo sekolah" src="' + esc(src) + '" onerror="this.parentElement.classList.remove(\'has-img\');this.remove()">' : '') + U.i('school', 'f') + '</span>';
+  };
+  // Kecilkan gambar di peramban. kotak = true → potong persegi di tengah (foto profil).
+  U.kecilkanGambar = (file, max, kotak) => new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = im.naturalWidth, h = im.naturalHeight, c = document.createElement('canvas'), x = c.getContext('2d');
+      if (kotak) {
+        const side = Math.min(w, h); c.width = c.height = Math.min(max, side);
+        x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+        x.drawImage(im, (w - side) / 2, (h - side) / 2, side, side, 0, 0, c.width, c.height);
+      } else {
+        const sc = Math.min(1, max / Math.max(w, h)); c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
+        x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      }
+      res(c.toDataURL('image/jpeg', 0.88));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Berkas tidak dapat dibaca sebagai gambar.')); };
+    im.src = url;
+  });
+
   // ---- toast ----
   U.toast = (msg, kind, ms) => {
     let box = document.getElementById('toasts');

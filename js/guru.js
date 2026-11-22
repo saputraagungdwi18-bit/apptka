@@ -100,7 +100,7 @@
     const opts = ['a', 'b', 'c', 'd', 'e'].map(k => '<div class="row g8" style="align-items:flex-start"><label class="row g8" style="margin-top:8px;cursor:pointer" title="Jadikan kunci jawaban"><input type="radio" name="kunci" value="' + k.toUpperCase() + '" class="chk" data-i="g_fk"' + (f.kunci === k.toUpperCase() ? ' checked' : '') + '><b style="width:18px">' + k.toUpperCase() + '</b></label><textarea class="textarea grow" rows="1" style="min-height:40px" data-i="g_ff" data-ev="input" data-k="opsi_' + k + '" placeholder="Pilihan ' + k.toUpperCase() + (k === 'e' ? ' (opsional)' : '') + '">' + esc(f['opsi_' + k]) + '</textarea></div>').join('');
     c.root.innerHTML = '<div class="row mb16"><a class="btn ghost sm" href="#/soal">' + I('arrow_back', 'sm') + 'Bank soal</a></div>' + U.pageHead(id ? 'Ubah soal' : 'Tambah soal', 'Pilih kunci jawaban dengan tombol radio di samping pilihan.') +
       '<div class="grid" style="grid-template-columns:minmax(0,3fr) minmax(0,2fr);align-items:start" id="sfg"><div class="col g16">' +
-      '<div class="card col g16"><h4>Isi soal</h4><div class="grid gs4 keep2"><div class="field"><label>Mata pelajaran</label><select class="select" data-i="g_ff" data-k="id_mapel">' + U.opt(mapelOpt(), f.id_mapel) + '</select></div><div class="field"><label>Topik</label><input class="input" list="tpk" data-i="g_ff" data-ev="input" data-k="topik" value="' + esc(f.topik) + '" placeholder="mis. Aljabar"><datalist id="tpk">' + topiks.map(t => '<option value="' + esc(t) + '">').join('') + '</datalist></div><div class="field"><label>Tingkat kesulitan</label><select class="select" data-i="g_ff" data-k="kesulitan">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], f.kesulitan) + '</select></div><div class="field"><label>Poin</label><input type="number" class="input" min="0.01" max="100" step="0.5" data-i="g_ff" data-ev="input" data-k="poin" value="' + esc(f.poin) + '"><span class="hint">Bobot skor soal ini.</span></div></div>' +
+      '<div class="card col g16"><h4>Isi soal</h4><div class="grid gs4 keep2"><div class="field"><label>Mata pelajaran</label><select class="select" data-i="g_ff" data-k="id_mapel">' + U.opt(mapelOpt(), f.id_mapel) + '</select></div><div class="field"><label>Topik</label><input class="input" list="tpk" data-i="g_ff" data-ev="input" data-k="topik" value="' + esc(f.topik) + '" placeholder="mis. Aljabar"><datalist id="tpk">' + topiks.map(t => '<option value="' + esc(t) + '">').join('') + '</datalist></div><div class="field"><label>Tingkat kesulitan</label><select class="select" data-i="g_ff" data-k="kesulitan">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], f.kesulitan) + '</select></div><div class="field"><label>Poin</label><input type="number" class="input" min="1" max="100" step="1" data-i="g_ff" data-ev="input" data-k="poin" value="' + Math.round(Number(f.poin) || 1) + '"><span class="hint">Bilangan bulat 1–100.</span></div></div>' +
       '<div class="field"><label>Pertanyaan</label><textarea class="textarea" rows="5" data-i="g_ff" data-ev="input" data-k="pertanyaan" placeholder="Tulis pertanyaan…">' + esc(f.pertanyaan) + '</textarea><span class="hint">Awali baris dengan <code>$$ </code> untuk blok rumus, mis. <code>$$ f(x) = 2x³ − 5x + 1</code>. Gunakan **teks** untuk tebal. Simbol seperti √ ² ³ π ≤ dapat diketik langsung.</span></div>' +
       '<div class="field"><label>Gambar soal (opsional)</label><div id="gwrap">' + gambarBlok(f) + '</div></div></div>' +
       '<div class="card col g8"><h4>Pilihan jawaban</h4>' + opts + '</div><div class="card col g8"><h4>Pembahasan</h4><textarea class="textarea" rows="4" data-i="g_ff" data-ev="input" data-k="pembahasan" placeholder="Langkah penyelesaian…">' + esc(f.pembahasan) + '</textarea></div>' +
@@ -172,10 +172,19 @@
   act.g_simp = () => {
     const h = U.modal({ title: 'Import soal', sub: 'CSV atau Excel (.xlsx). Baris pertama = judul kolom.', cls: 'wide', body:
       '<div class="col g16"><div class="alert info">' + I('info') + '<div>Kolom: <code>' + TPL.join(', ') + '</code>. Nama <b>mapel</b> harus sama dengan data master. <button class="btn sec sm" data-a="g_tpl" style="margin-left:8px">' + I('download', 'sm') + 'Unduh templat</button></div></div>' +
-      '<label class="dz" id="dz"><input type="file" id="ifile" accept=".csv,.xlsx,.xls,text/csv" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas atau seret ke sini</div><div class="sm">CSV UTF-8 / Excel</div></label><div id="iprev"></div></div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="igo" data-a="g_igo">Import</button>' });
+      '<label class="dz" id="dz"><input type="file" id="ifile" accept="' + (isAdmin() ? '.csv,.xlsx,.xls,.pdf,.doc,.docx,text/csv' : '.csv,.xlsx,.xls,text/csv') + '" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas atau seret ke sini</div><div class="sm">CSV UTF-8 / Excel</div></label><div id="iprev"></div></div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="igo" data-a="g_igo">Import</button>' });
     const fi = h.$('#ifile'), dz = h.$('#dz');
     const load = async f => {
-      try { const rows = await U.bacaTabel(f); h.rows = rows; h.$('#iprev').innerHTML = rows.length ? '<p class="sm"><b>' + rows.length + '</b> baris terbaca. Pratinjau 3 baris pertama:</p><div class="tw"><table><thead><tr><th>Mapel</th><th>Topik</th><th>Pertanyaan</th><th>Kunci</th></tr></thead><tbody>' + rows.slice(0, 3).map(r => '<tr><td>' + esc(r.mapel) + '</td><td>' + esc(r.topik) + '</td><td>' + esc((r.pertanyaan || '').slice(0, 60)) + '</td><td>' + esc(r.kunci) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="alert err">Tidak ada baris terbaca.</div>'; h.$('#igo').classList.toggle('off', !rows.length); }
+      if (/\.(pdf|docx?)$/i.test(f.name)) {
+        if (!isAdmin()) return U.toast('Import dokumen hanya untuk admin.', 'warn');
+        const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = () => rej(new Error('Gagal membaca berkas.')); fr.readAsDataURL(f); });
+        const mime = /\.pdf$/i.test(f.name) ? 'application/pdf' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/msword';
+        h.doc = { data: data, mime: mime, nama: f.name }; h.rows = null;
+        h.$('#iprev').innerHTML = '<div class="alert info">' + I('description') + '<div><b>' + esc(f.name) + '</b> siap diimpor. Soal dikenali dari format: nomor soal, pilihan A sampai E, lalu baris <code>Kunci: B</code>. Semua soal masuk sebagai Draft.</div></div><div class="field mt16"><label>Mata pelajaran untuk semua soal</label><select class="select" id="dmp">' + U.opt(mapelOpt(), '', 'Pilih mata pelajaran') + '</select></div>';
+        h.$('#igo').classList.remove('off');
+        return;
+      }
+      try { const rows = await U.bacaTabel(f); h.rows = rows; h.doc = null; h.$('#iprev').innerHTML = rows.length ? '<p class="sm"><b>' + rows.length + '</b> baris terbaca. Pratinjau 3 baris pertama:</p><div class="tw"><table><thead><tr><th>Mapel</th><th>Topik</th><th>Pertanyaan</th><th>Kunci</th></tr></thead><tbody>' + rows.slice(0, 3).map(r => '<tr><td>' + esc(r.mapel) + '</td><td>' + esc(r.topik) + '</td><td>' + esc((r.pertanyaan || '').slice(0, 60)) + '</td><td>' + esc(r.kunci) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="alert err">Tidak ada baris terbaca.</div>'; h.$('#igo').classList.toggle('off', !rows.length); }
       catch (e) { U.err(e); }
     };
     fi.onchange = () => fi.files[0] && load(fi.files[0]);
@@ -185,8 +194,22 @@
     TKA._imp = h;
   };
   act.g_tpl = () => U.download('templat-soal.csv', U.csvBuild(TPL, [['Matematika', 'Aljabar', 'Sedang', 'Nilai x dari 2x + 3 = 9 adalah ...', '2', '3', '4', '5', '6', 'B', '2x = 6 sehingga x = 3.', 'Draft']]));
+  // Impor soal dari PDF/DOC/DOCX: dibaca di server (Google Docs sementara), lalu dipecah menjadi soal Draft.
+  async function impDokumen(h, el) {
+    const idm = (h.$('#dmp') || {}).value;
+    if (!idm) { el.disabled = false; return U.toast('Pilih mata pelajaran terlebih dahulu.', 'warn'); }
+    el.textContent = 'Membaca dokumen…';
+    try {
+      const j = await A.call('soal.impor_dokumen', { id_mapel: idm, mime: h.doc.mime, nama: h.doc.nama, data: h.doc.data }, { timeout: 120000, retry: 0 });
+      D.invalidate('soal'); D.fetch('soal').then(() => { if (TKA._sd) TKA.go('soal'); }).catch(() => {});
+      h.$('.mdl-b').innerHTML = '<div class="alert ' + (j.gagal.length ? 'warn' : 'ok') + '">' + I(j.gagal.length ? 'warning' : 'check_circle') + '<div><b>' + j.berhasil + ' soal berhasil diimpor</b> dari ' + j.terbaca + ' yang terbaca' + (j.gagal.length ? ', ' + j.gagal.length + ' perlu diperiksa.' : '. Soal masuk sebagai Draft.') + '</div></div>' +
+        (j.gagal.length ? '<ul class="sm mt8" style="max-height:200px;overflow:auto">' + j.gagal.slice(0, 50).map(x => '<li>' + esc(x.baris) + ': ' + esc(x.pesan) + '</li>').join('') + '</ul>' : '');
+      el.remove();
+    } catch (e) { el.disabled = false; el.textContent = 'Impor'; U.err(e); }
+  }
   act.g_igo = async el => {
-    const h = TKA._imp; if (!h || !h.rows) return; el.disabled = true;
+    const h = TKA._imp; if (!h || (!h.rows && !h.doc)) return; el.disabled = true;
+    if (h.doc) return impDokumen(h, el);
     let ok = 0; const gagal = [];
     for (let i = 0; i < h.rows.length; i += 50) {
       el.textContent = 'Mengimpor ' + Math.min(i + 50, h.rows.length) + '/' + h.rows.length + '…';
@@ -277,7 +300,7 @@
       $('#psel').textContent = sel.length + ' soal';
       $('#ptot').textContent = 'Total poin: ' + totPoin();
       $('#pord').innerHTML = sel.map((i, n) => '<li><span class="n">' + (n + 1) + '</span><div class="grow sm">' + esc((by[i] || { ringkas: '(soal hilang)' }).ringkas) + (by[i] ? '<div class="xs muted">' + esc(by[i].topik) + '</div>' : '') + '</div>' +
-        '<input type="number" class="input" style="width:76px;height:34px" min="0.01" max="100" step="0.5" value="' + esc(poinOf(i)) + '" data-i="g_pp" data-id="' + i + '" aria-label="Poin soal ' + (n + 1) + '">' +
+        '<input type="number" class="input" style="width:76px;height:34px" min="1" max="100" step="1" value="' + Math.round(poinOf(i)) + '" data-i="g_pp" data-id="' + i + '" aria-label="Poin soal ' + (n + 1) + '">' +
         '<button class="ibtn" data-a="g_pup" data-n="' + n + '"' + (n === 0 ? ' disabled' : '') + '>' + I('arrow_upward', 'sm') + '</button><button class="ibtn" data-a="g_pdn" data-n="' + n + '"' + (n === sel.length - 1 ? ' disabled' : '') + '>' + I('arrow_downward', 'sm') + '</button><button class="ibtn dng" data-a="g_prm" data-id="' + i + '">' + I('close', 'sm') + '</button></li>').join('') || '<li class="muted sm" style="border:0;justify-content:center">Belum ada soal dipilih</li>';
     };
     TKA._pf = { sel: sel, PF: PF, drawPick: drawPick, drawSel: drawSel, id: id, poin: poinM, poinOf: poinOf, totPoin: totPoin };
