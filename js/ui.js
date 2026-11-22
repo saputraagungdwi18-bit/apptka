@@ -173,6 +173,13 @@
     btn += mk(page + 1, '›', page >= n);
     return '<div class="pager"><span class="sm muted">Menampilkan ' + from + '–' + to + ' dari ' + U.rb(total) + '</span><div class="pg">' + btn + '</div></div>';
   };
+  U.downloadB64 = (name, b64, mime) => {
+    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], { type: mime || 'application/octet-stream' }));
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
   U.copy = async t => { try { await navigator.clipboard.writeText(t); U.toast('Disalin ke papan klip', 'ok', 1800); } catch (e) { U.toast('Tidak bisa menyalin otomatis', 'warn'); } };
   TKA.actions.copy = el => U.copy(el.dataset.v);
 })();
