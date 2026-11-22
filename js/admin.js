@@ -41,7 +41,7 @@
       $('#ubody').innerHTML = pg.length ? '<div class="tw"><table><thead><tr><th style="width:36px"><input type="checkbox" class="chk" data-a="a_uall"></th><th>Nama</th><th>Peran</th><th class="hm">Kelas / mapel</th><th class="hm">Ruang</th><th>Status</th><th></th></tr></thead><tbody>' + pg.map(u => '<tr><td><input type="checkbox" class="chk" data-a="a_usel" data-id="' + u.id + '"' + (UF.sel.has(u.id) ? ' checked' : '') + '></td><td><div class="row g8"><span class="avatar fotobtn" data-a="a_ufoto" data-id="' + u.id + '" role="button" aria-label="Ubah foto" style="cursor:pointer">' + U.fotoEl(u, 32) + '</span><div><b>' + esc(u.nama) + '</b><div class="xs muted mono">' + esc(u.username) + '</div></div></div></td><td>' + U.badge(PRN[u.peran][0], PRN[u.peran][1]) + '</td><td class="sm hm">' + (u.peran === 'siswa' ? esc(u.kelas || '-') : u.peran === 'guru' ? esc(String(u.id_mapel || '').split(',').filter(Boolean).map(mapelNm).join(', ') || 'Semua mapel') : '—') + '</td><td class="sm hm">' + (u.peran === 'siswa' ? esc(u.ruang || '—') : '—') + '</td><td>' + U.badge(u.status, USB[u.status]) + '</td><td class="tr"><span class="acts"><button class="ibtn" data-a="a_ured" data-id="' + u.id + '" title="Reset kata sandi">' + I('key') + '</button><button class="ibtn" data-a="a_uedit" data-id="' + u.id + '" title="Ubah">' + I('edit') + '</button><button class="ibtn dng" data-a="a_udel" data-id="' + u.id + '" title="Hapus">' + I('delete') + '</button></span></td></tr>').join('') + '</tbody></table></div>' + U.pager(f.length, UF.page, per, 'a_up') : U.empty('group_off', 'Tidak ada pengguna', 'Ubah filter atau tambah pengguna baru.');
       const bar = $('#ubulk'); bar.classList.toggle('hide', !UF.sel.size); bar.querySelector('b').textContent = UF.sel.size;
     };
-    c.root.innerHTML = U.pageHead('Manajemen pengguna', 'Akun siswa, guru, dan administrator.', '<button class="btn sec" data-a="a_uimp">' + I('upload_file') + 'Import</button><button class="btn sec" data-a="a_updf">' + I('picture_as_pdf') + 'Unduh PDF</button><button class="btn" data-a="a_nu" data-p="siswa">' + I('person_add') + 'Tambah pengguna</button>') +
+    c.root.innerHTML = U.pageHead('Manajemen pengguna', 'Akun siswa, guru, dan administrator.', '<button class="btn sec" data-a="a_uimp">' + I('upload_file') + 'Import</button><button class="btn sec" data-a="a_laporan">' + I('table_chart') + 'Laporan</button><button class="btn" data-a="a_nu" data-p="siswa">' + I('person_add') + 'Tambah pengguna</button>') +
       '<div class="tabs mb16" id="utabs"></div><div class="card pad0"><div class="filters"><div class="grow"><input class="input" placeholder="Cari nama atau NISN/username…" data-i="a_uf" data-k="q" data-ev="input" value="' + esc(UF.q) + '"></div><select class="select" data-i="a_uf" data-k="kelas">' + U.opt(kelasOpt(), UF.kelas, 'Semua kelas') + '</select><select class="select" data-i="a_uf" data-k="st">' + U.opt([['Aktif', 'Aktif'], ['Nonaktif', 'Nonaktif'], ['Terkunci', 'Terkunci']], UF.st, 'Semua status') + '</select></div>' +
       '<div id="ubulk" class="row sp wrap sm hide" style="padding:10px 16px;background:var(--soft)"><span><b>0</b> dipilih</span><div class="row g8"><button class="btn sec sm" data-a="a_ub" data-o="reset">' + I('key', 'sm') + 'Reset sandi + kartu</button><button class="btn sec sm" data-a="a_ub" data-o="aktif">Aktifkan</button><button class="btn sec sm" data-a="a_ub" data-o="nonaktif">Nonaktifkan</button><button class="btn dsec sm" data-a="a_ub" data-o="hapus">Hapus</button></div></div><div id="ubody">' + U.skel(6, 44) + '</div></div>';
     TKA._ud = draw; TKA._ul = () => list;
@@ -65,18 +65,24 @@
     const h = U.modal({ title: edit ? 'Ubah pengguna' : 'Tambah pengguna', body:
       '<div class="col g16"><div class="field"><label>Peran</label><select class="select" id="fpr"' + (edit ? ' disabled' : '') + '>' + U.opt([['siswa', 'Siswa'], ['guru', 'Guru / Pengawas'], ['admin', 'Administrator']], peran) + '</select></div>' +
       '<div class="field"><label>Nama lengkap</label><input class="input" id="fnm" value="' + esc(u ? u.nama : '') + '"></div>' +
-      '<div class="field"><label id="flu">' + (peran === 'siswa' ? 'NISN (10 digit)' : 'Username') + '</label><input class="input mono" id="fus" value="' + esc(u ? u.username : '') + '"' + (edit ? ' disabled' : '') + ' maxlength="30"></div>' +
+      '<div class="field"><label id="flu">' + (peran === 'siswa' ? 'NISN (10 digit)' : peran === 'guru' ? 'NIP (8–18 digit)' : 'Username') + '</label><input class="input mono" id="fus" value="' + esc(u ? u.username : '') + '"' + (edit ? ' disabled' : '') + ' maxlength="30"></div>' +
       '<div class="field" id="fkl"><label>Kelas</label><select class="select" id="fkls">' + U.opt(kelasOpt(), u ? u.id_kelas : '', 'Pilih kelas') + '</select></div>' +
       '<div class="field" id="fru"><label>Ruang <span class="muted">(opsional)</span></label><select class="select" id="frua">' + U.opt(M().ruang.map(r => [r.id_ruang, r.nama_ruang]), u ? u.id_ruang || '' : '', 'Tanpa ruang') + '</select><span class="hint">Ruang hanya untuk siswa.</span></div>' +
       '<div class="field" id="fmp"><label>Mata pelajaran yang diampu</label><div class="sel-list" style="max-height:140px">' + mp.map(m => '<label><input type="checkbox" class="chk" value="' + m.id_mapel + '"' + (cur.indexOf(m.id_mapel) > -1 ? ' checked' : '') + '>' + esc(m.nama_mapel) + '</label>').join('') + '</div><span class="hint">Kosong = semua mapel.</span></div>' +
-      '<div class="field"><label>' + (edit ? 'Kata sandi baru (opsional)' : 'Kata sandi (opsional)') + '</label><input class="input" id="fpw" placeholder="Min. 8 karakter, huruf dan angka. Kosongkan untuk otomatis" autocomplete="new-password"></div>' +
+      '<div class="field"><label>' + (edit ? 'Kata sandi baru (opsional)' : 'Kata sandi (opsional)') + '</label><input class="input" id="fpw" placeholder="Siswa & guru: angka saja. Kosongkan = sama dengan NISN/NIP" autocomplete="new-password"></div>' +
       (edit ? '<div class="field"><label>Status</label><select class="select" id="fst">' + U.opt([['Aktif', 'Aktif'], ['Nonaktif', 'Nonaktif'], ['Terkunci', 'Terkunci']], u.status) + '</select></div>' : '') + '</div>',
       footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" data-a="a_usave">' + I('save') + 'Simpan</button>' });
-    const sync = () => { const p = h.$('#fpr').value; h.$('#fkl').classList.toggle('hide', p !== 'siswa'); h.$('#fru').classList.toggle('hide', p !== 'siswa'); h.$('#fmp').classList.toggle('hide', p !== 'guru'); h.$('#flu').textContent = p === 'siswa' ? 'NISN (10 digit)' : 'Username'; };
-    h.$('#fpr').addEventListener('change', sync); sync(); h.uid = u ? u.id : null; TKA._uh = h;
+    const sync = () => { const p = h.$('#fpr').value; h.$('#fkl').classList.toggle('hide', p !== 'siswa'); h.$('#fru').classList.toggle('hide', p !== 'siswa'); h.$('#fmp').classList.toggle('hide', p !== 'guru'); h.$('#flu').textContent = p === 'siswa' ? 'NISN (10 digit)' : p === 'guru' ? 'NIP (8–18 digit)' : 'Username'; };
+    h.$('#fpr').addEventListener('change', sync); sync();
+    const kaWrap = document.createElement('div'); kaWrap.className = 'field'; kaWrap.id = 'fka';
+    const kaSel = u && u.kelas_ajar ? u.kelas_ajar : [];
+    kaWrap.innerHTML = '<label>Kelas yang diajar</label><select class="select" id="fkaa" multiple size="5">' + kelasOpt().map(k => '<option value="' + esc(k[0]) + '"' + (kaSel.indexOf(k[0]) > -1 ? ' selected' : '') + '>' + esc(k[1]) + '</option>').join('') + '</select><span class="hint">Pilih satu atau lebih kelas (Ctrl/⌘ untuk lebih dari satu). Guru hanya dapat menjadwalkan ujian untuk kelas ini.</span>';
+    h.$('#fru').insertAdjacentElement('afterend', kaWrap);
+    const syncKa = () => kaWrap.classList.toggle('hide', h.$('#fpr').value !== 'guru');
+    h.$('#fpr').addEventListener('change', syncKa); syncKa(); h.uid = u ? u.id : null; TKA._uh = h;
   }
   act.a_usave = async el => {
-    const h = TKA._uh, b = { peran: h.$('#fpr').value, nama: h.$('#fnm').value, username: h.$('#fus').value.trim(), id_kelas: h.$('#fkls').value, id_ruang: h.$('#frua').value, id_mapel: U.$$('#fmp input:checked', h.el).map(i => i.value).join(','), password: h.$('#fpw').value };
+    const h = TKA._uh, b = { peran: h.$('#fpr').value, nama: h.$('#fnm').value, username: h.$('#fus').value.trim(), id_kelas: h.$('#fkls').value, id_ruang: h.$('#frua').value, kelas_ajar: Array.from(h.$('#fkaa') ? h.$('#fkaa').selectedOptions : []).map(o => o.value), id_mapel: U.$$('#fmp input:checked', h.el).map(i => i.value).join(','), password: h.$('#fpw').value };
     if (h.uid) { b.id = h.uid; b.status = h.$('#fst').value; }
     el.disabled = true;
     try { const j = await A.call('user.save', b); h.close(); await refreshUsers(); if (!h.uid) showKartu([{ nama: b.nama, username: j.username, password: j.password, kelas: (M().kelas.filter(k => k.id_kelas === b.id_kelas)[0] || {}).nama_kelas || '', peran: b.peran }], 'Akun dibuat'); else U.toast('Perubahan disimpan.', 'ok'); }
@@ -122,12 +128,37 @@
     U.downloadB64('daftar-pengguna' + (UF.kelas ? '-kelas' : '') + '.pdf', j.base64, 'application/pdf');
     U.toast(j.jumlah + ' pengguna diunduh.', 'ok');
   };
+  // ---- Laporan daftar pengguna: tabel gaya laporan (dapat dicetak / disimpan sebagai PDF) ----
+  const REP_CSS = '.rep-t{font-size:26px;font-weight:800;color:#0b1220;margin:0;letter-spacing:-.01em}.rep-s{color:#6b7280;font-size:13px;line-height:21px;margin-top:6px}.rep table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}.rep th{background:#4f46e5;color:#fff;font-weight:700;text-align:left;padding:8px 10px;white-space:nowrap}.rep td{padding:7px 10px;color:#1f2937;border-bottom:0}.rep tbody tr:nth-child(odd){background:#f5f6ff}.rep td.r{text-align:right}';
+  function laporanTabel(list) {
+    return '<table><thead><tr><th>No</th><th>Nama</th><th>Peran</th><th>Kelas</th><th>Mapel</th><th>Ruang</th><th>Password</th><th>Status</th></tr></thead><tbody>' +
+      list.map((u, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(u.nama) + '</td><td>' + esc(PRN[u.peran] ? PRN[u.peran][0] : u.peran) + '</td><td>' + esc(u.peran === 'siswa' ? (u.kelas || '-') : '—') + '</td><td>' + esc(u.peran === 'guru' ? (String(u.id_mapel || '').split(',').filter(Boolean).map(mapelNm).join(', ') || 'Semua mapel') : '—') + '</td><td>' + esc(u.peran === 'siswa' ? (u.ruang || '—') : '—') + '</td><td>______________</td><td>' + esc(u.status) + '</td></tr>').join('') +
+      '</tbody></table>';
+  }
+  function laporanRingkas(list) {
+    const kelas = UF.kelas ? ((M().kelas.filter(k => k.id_kelas === UF.kelas)[0] || {}).nama_kelas || '') : 'Semua kelas';
+    const peran = UF.tab ? PRN[UF.tab][0] : 'Semua peran';
+    const aktif = list.filter(u => u.status === 'Aktif').length;
+    return 'Tanggal: ' + U.tgl(Date.now()) + ' • Peran: ' + peran + ' • Kelas: ' + (kelas || '—') + '<br>Jumlah: ' + U.rb(list.length) + ' pengguna • Aktif: ' + U.rb(aktif) + ' • Nonaktif/terkunci: ' + U.rb(list.length - aktif);
+  }
+  act.a_laporan = () => {
+    const list = ufFilter(D.peek('users') || []);
+    if (!list.length) return U.toast('Tidak ada pengguna yang cocok dengan filter.', 'warn');
+    const h = U.modal({ title: 'Laporan daftar pengguna', cls: 'xwide', body:
+      '<div class="rep"><style>' + REP_CSS + '</style><div class="rep-t">Daftar Pengguna — ' + esc(S.setting.nama_sekolah || '') + '</div><div class="rep-s">' + laporanRingkas(list) + '</div>' + laporanTabel(list) + '</div>',
+      footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn" id="lapcetak">' + I('print') + 'Cetak / simpan PDF</button>' });
+    h.$('#lapcetak').onclick = () => {
+      const html = '<html><head><meta charset="utf-8"><title>Laporan daftar pengguna</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,Helvetica,sans-serif}' + REP_CSS + '</style></head><body><div class="rep"><div class="rep-t">Daftar Pengguna — ' + esc(S.setting.nama_sekolah || '') + '</div><div class="rep-s">' + laporanRingkas(list) + '</div>' + laporanTabel(list) + '</div></body></html>';
+      cetakWindow(html);
+    };
+  };
+
   act.a_uimp = () => {
-    const h = U.modal({ title: 'Import pengguna', sub: 'CSV atau Excel. Kolom: nama, username (NISN), peran, kelas, mapel, ruang, password.', cls: 'wide', body: '<div class="col g16"><div class="alert info">' + I('info') + '<div><b>peran</b> default <i>siswa</i>. <b>kelas</b> memakai nama kelas yang sudah ada. <b>password</b> boleh kosong (dibuat otomatis). <button class="btn sec sm" data-a="a_utpl" style="margin-left:8px">' + I('download', 'sm') + 'Templat</button></div></div><label class="dz" id="udz"><input type="file" id="ufile" accept=".csv,.xlsx,.xls" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas CSV / Excel</div></label><div id="uprev"></div></div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="ugo" data-a="a_uigo">Import</button>' });
+    const h = U.modal({ title: 'Import pengguna', sub: 'CSV atau Excel. Kolom: nama, username (NISN untuk siswa, NIP untuk guru), peran, kelas, mapel, ruang, password.', cls: 'wide', body: '<div class="col g16"><div class="alert info">' + I('info') + '<div><b>peran</b> default <i>siswa</i>. <b>kelas</b> memakai nama kelas yang sudah ada. <b>password</b> boleh kosong (dibuat otomatis). <button class="btn sec sm" data-a="a_utpl" style="margin-left:8px">' + I('download', 'sm') + 'Templat</button></div></div><label class="dz" id="udz"><input type="file" id="ufile" accept=".csv,.xlsx,.xls" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas CSV / Excel</div></label><div id="uprev"></div></div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="ugo" data-a="a_uigo">Import</button>' });
     h.$('#ufile').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { const rows = await U.bacaTabel(f); h.rows = rows; h.$('#uprev').innerHTML = '<p class="sm"><b>' + rows.length + '</b> baris terbaca.</p>'; h.$('#ugo').classList.toggle('off', !rows.length); } catch (e) { U.err(e); } };
     TKA._uih = h;
   };
-  act.a_utpl = () => U.download('templat-pengguna.csv', U.csvBuild(['nama', 'username', 'peran', 'kelas', 'mapel', 'ruang', 'password'], [['Ahmad Rizky', '2100000123', 'siswa', 'XII IPA 1', '', 'Ruang 12A', ''], ['Budi Santoso, S.Pd', 'budi.s', 'guru', '', 'Matematika', '', '']]));
+  act.a_utpl = () => U.download('templat-pengguna.csv', U.csvBuild(['nama', 'username', 'peran', 'kelas', 'mapel', 'ruang', 'password'], [['Ahmad Rizky', '2100000123', 'siswa', 'XII IPA 1', '', 'Ruang 12A', ''], ['Budi Santoso, S.Pd', '198506152010011001', 'guru', '', 'Matematika', '', '']]));
   act.a_uigo = async el => {
     const h = TKA._uih; if (!h || !h.rows) return; el.disabled = true; let ok = 0, kartu = []; const gagal = [];
     for (let i = 0; i < h.rows.length; i += 40) {
@@ -259,11 +290,39 @@
       && (!CF.guru || u.id === CF.guru)
       && (!CF.q || (u.nama + ' ' + u.username).toLowerCase().indexOf(CF.q.toLowerCase()) > -1));
   }
+  // Kartu login: logo, judul, QR code di kanan atas; foto, nama, username, password, dan ruang.
+  // QR berisi alamat login dan username saja (sandi tidak pernah masuk QR).
+  const QR_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  // Pustaka QR dari CDN dibatasi 4 detik. Jika gagal atau lambat, kartu tetap bisa dicetak (QR diganti kotak kosong).
+  function loadQr() {
+    if (window.QRCode) return Promise.resolve(true);
+    const muat = new Promise(res => { const s = document.createElement('script'); s.src = QR_SRC; s.onload = () => res(true); s.onerror = () => res(false); document.head.appendChild(s); });
+    const batas = new Promise(res => setTimeout(() => res(false), 4000));
+    return Promise.race([muat, batas]);
+  }
+  function qrUrl(teks) {
+    if (!window.QRCode) return '';
+    const d = document.createElement('div');
+    try { new QRCode(d, { text: teks, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M }); } catch (e) { return ''; }
+    const cv = d.querySelector('canvas'); return cv ? cv.toDataURL('image/png') : '';
+  }
   function cetakKartuHtml(list, withPass) {
-    const nm = S.setting.nama_sekolah || '';
-    return '<html><head><title>Kartu peserta</title><style>body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}.k{border:1px solid #333;border-radius:6px;padding:8px 10px;font-size:12px;break-inside:avoid}.k h4{margin:0 0 6px;font-size:13px}.k div{margin:2px 0}.m{font-family:monospace;font-size:14px;font-weight:bold}.line{display:inline-block;min-width:130px;border-bottom:1px solid #333}</style></head><body><div class="g">' +
-      list.map(k => '<div class="k"><h4>' + esc(nm) + ' — Simulasi TKA</h4><div><b>' + esc(k.nama) + '</b>' + (k.kelas ? ' · ' + esc(k.kelas) : '') + '</div><div>' + (k.peran === 'siswa' ? 'NISN' : 'Username') + ': <span class="m">' + esc(k.username) + '</span></div><div>Kata sandi: ' + (withPass ? '<span class="m">' + esc(k.password) + '</span>' : '<span class="line">&nbsp;</span>') + '</div></div>').join('') +
-      '</div></body></html>';
+    const nm = S.setting.nama_sekolah || '', th = S.setting.tahun_ajaran || '', logo = U.safeImg(S.setting.logo_url);
+    const base = location.origin + location.pathname;
+    const kartu = list.map(k => {
+      const qr = qrUrl('Login: ' + base + ' | Username: ' + k.username + ' | ' + nm);
+      return '<div class="kt"><div class="kt-h">' +
+        (logo ? '<img class="kt-logo" src="' + esc(logo) + '" alt="">' : '<span class="kt-logo"></span>') +
+        '<div class="kt-t"><b>KARTU LOGIN</b><br>' + esc(nm) + '<br>TES KEMAMPUAN AKADEMIK ' + esc(th) + '</div>' +
+        (qr ? '<img class="kt-qr" src="' + qr + '" alt="QR">' : '<span class="kt-qr"></span>') + '</div>' +
+        '<div class="kt-b"><div class="kt-foto"><img src="' + esc(U.safeImg(k.foto) || U.defAv) + '" alt=""></div><table class="kt-f">' +
+        '<tr><td>Nama Peserta</td><td>:</td><td><b>' + esc(k.nama) + '</b></td></tr>' +
+        '<tr><td>' + (k.peran === 'siswa' ? 'NISN / Username' : k.peran === 'guru' ? 'NIP' : 'Username') + '</td><td>:</td><td class="m">' + esc(k.username) + '</td></tr>' +
+        '<tr><td>Password</td><td>:</td><td class="m">' + (withPass ? esc(k.password) : '<span class="line">&nbsp;</span>') + '</td></tr>' +
+        '<tr><td>Ruang</td><td>:</td><td>' + esc(k.ruang || (k.peran === 'siswa' ? '—' : '—')) + '</td></tr>' +
+        '</table></div></div>';
+    }).join('');
+    return '<html><head><meta charset="utf-8"><title>Kartu login</title><style>@page{size:A4;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;margin:0}.g{display:grid;grid-template-columns:1fr 1fr;gap:6mm}.kt{border:1.5px solid #333;border-radius:6px;padding:8px 10px;break-inside:avoid;font-size:11px;color:#111}.kt-h{display:flex;align-items:center;gap:8px;border-bottom:1px solid #999;padding-bottom:6px}.kt-logo{width:44px;height:44px;object-fit:contain;flex:none}.kt-t{flex:1;text-align:center;font-size:10.5px;line-height:14px}.kt-t b{font-size:12px}.kt-qr{width:72px;height:72px;flex:none}.kt-b{display:flex;gap:10px;margin-top:8px}.kt-foto{width:70px;height:88px;border:1px solid #555;flex:none;overflow:hidden}.kt-foto img{width:100%;height:100%;object-fit:cover}.kt-f{border-collapse:collapse;font-size:11px}.kt-f td{padding:2px 4px;vertical-align:top}.kt-f td:first-child{white-space:nowrap;width:98px}.m{font-family:monospace;font-size:12px;font-weight:bold}.line{display:inline-block;min-width:110px;border-bottom:1px solid #333}</style></head><body><div class="g">' + kartu + '</div></body></html>';
   }
   function cetakWindow(html) {
     const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;width:0;height:0;border:0'; document.body.appendChild(f);
@@ -307,9 +366,9 @@
     const t = cfTargets(); if (!t.length) return U.toast('Tidak ada pengguna yang cocok.', 'warn');
     U.download('data-pengguna.csv', U.csvBuild(['Nama', 'NISN/Username', 'Peran', 'Kelas', 'Mapel', 'Status'], t.map(u => [u.nama, u.username, u.peran, u.kelas || '', mapelNama(u), u.status])));
   };
-  act.c_print = () => {
+  act.c_print = async () => {
     const t = cfTargets(); if (!t.length) return U.toast('Tidak ada pengguna yang cocok.', 'warn');
-    cetakWindow(cetakKartuHtml(t.map(u => ({ nama: u.nama, username: u.username, peran: u.peran, kelas: u.kelas, password: '' })), false));
+    await loadQr(); cetakWindow(cetakKartuHtml(t.map(u => ({ nama: u.nama, username: u.username, peran: u.peran, kelas: u.kelas, foto: u.foto, ruang: u.ruang, password: '' })), false));
   };
   act.c_reset = async () => {
     const t = cfTargets().filter(u => u.id !== S.user.id);
@@ -323,7 +382,84 @@
     await refreshUsers();
     CF.sel.clear(); if (TKA._cf) TKA._cf.draw();
     if (!kartu.length) return U.toast('Tidak ada kartu yang dibuat.', 'warn');
-    cetakWindow(cetakKartuHtml(kartu, true));
+    await loadQr(); cetakWindow(cetakKartuHtml(kartu.map(k => Object.assign({}, (D.peek('users') || []).filter(u => u.username === k.username)[0] || {}, k)), true));
     U.toast(kartu.length + ' kata sandi direset. Kartu siap dicetak.', 'ok', 4500);
+  };
+
+  // ============================================================ PENGATURAN GURU & PENGAWAS
+  // Daftar guru di kiri; mapel yang diampu dan kelas yang diajar dipilih lewat multi-checkbox (dua kelompok berdampingan).
+  // Disimpan lewat user.save (untuk guru: id_mapel dan kelas_ajar).
+  const PG = { q: '', sel: '', mapel: new Set(), kelas: new Set(), baru: false };
+  let pgDrawL = null, pgDrawR = null;
+  const pgGuru = () => (D.peek('users') || []).filter(u => u.peran === 'guru');
+  const pgAkun = () => pgGuru().filter(u => u.id === PG.sel)[0] || null;
+  function pgPick(u) {
+    PG.sel = u.id; PG.mapel = new Set(String(u.id_mapel || '').split(',').filter(Boolean));
+    PG.kelas = new Set(u.kelas_ajar || []); PG.baru = false;
+  }
+  function pgDrawKiri() {
+    if (!pgDrawL) return;
+    const l = pgGuru().filter(u => !PG.q || (u.nama + ' ' + u.username).toLowerCase().indexOf(PG.q.toLowerCase()) > -1);
+    pgDrawL.innerHTML = l.length ? l.map(u => '<button type="button" class="pgitem' + (u.id === PG.sel ? ' on' : '') + '" data-a="pg_pick" data-id="' + u.id + '">' +
+      '<div class="row g8">' + U.fotoEl(u, 34) + '<div class="grow"><b>' + esc(u.nama) + '</b><div class="xs muted mono">' + esc(u.username) + '</div></div></div>' +
+      '<div class="xs muted" style="margin-top:6px">' + String(u.id_mapel || '').split(',').filter(Boolean).length + ' mapel • ' + (u.kelas_ajar || []).length + ' kelas</div></button>').join('')
+      : U.empty('person_search', 'Belum ada guru', 'Tambahkan guru di menu Manajemen Pengguna.');
+  }
+  function pgDrawKanan() {
+    if (!pgDrawR) return;
+    const a = pgAkun();
+    if (!a) { pgDrawR.innerHTML = U.empty('touch_app', 'Pilih guru', 'Pilih guru di sebelah kiri untuk mengatur mapel dan kelasnya.'); return; }
+    const kotak = (daftar, set, aksi) => daftar.map(x => '<label class="pgchk-row"><input type="checkbox" class="pgchk" data-a="' + aksi + '" data-id="' + x[0] + '"' + (set.has(x[0]) ? ' checked' : '') + '><span>' + esc(x[1]) + '</span></label>').join('');
+    const mapelOpt = M().mapel.map(m => [m.id_mapel, m.nama_mapel]), kelasOpt2 = M().kelas.map(k => [k.id_kelas, k.nama_kelas]);
+    pgDrawR.innerHTML =
+      '<div class="row sp wrap"><div class="row g12">' + U.fotoEl(a, 44) + '<div><h3>' + esc(a.nama) + '</h3><div class="sm muted mono">' + esc(a.username) + '</div></div></div>' +
+      (PG.baru ? U.badge('Belum disimpan', 'warn') : U.badge('Tersimpan', 'ok')) + '</div>' +
+      '<div class="pgdua mt16">' +
+        '<div class="card flat"><div class="row sp"><h4>Mata pelajaran yang diampu</h4><span class="sm muted">' + PG.mapel.size + ' dipilih</span></div>' +
+          '<div class="pgbox">' + (mapelOpt.length ? kotak(mapelOpt, PG.mapel, 'pg_m') : '<p class="sm muted">Belum ada mata pelajaran.</p>') + '</div>' +
+          '<div class="row g8 mt8"><button class="btn ghost sm" data-a="pg_all" data-g="m">Pilih semua</button><button class="btn ghost sm" data-a="pg_none" data-g="m">Kosongkan</button></div></div>' +
+        '<div class="card flat"><div class="row sp"><h4>Kelas yang diajar</h4><span class="sm muted">' + PG.kelas.size + ' dipilih</span></div>' +
+          '<div class="pgbox">' + (kelasOpt2.length ? kotak(kelasOpt2, PG.kelas, 'pg_k') : '<p class="sm muted">Belum ada kelas.</p>') + '</div>' +
+          '<div class="row g8 mt8"><button class="btn ghost sm" data-a="pg_all" data-g="k">Pilih semua</button><button class="btn ghost sm" data-a="pg_none" data-g="k">Kosongkan</button></div></div>' +
+      '</div>' +
+      '<div class="row sp wrap mt16"><span class="sm muted">Mapel memengaruhi pilihan mapel di Tambah Soal. Kelas memengaruhi kelas yang bisa dijadwalkan.</span>' +
+        '<div class="row g8"><button class="btn sec' + (PG.baru ? '' : ' off') + '" data-a="pg_reset">Batalkan</button><button class="btn' + (PG.baru ? '' : ' off') + '" data-a="pg_save">' + I('save') + 'Simpan</button></div></div>';
+  }
+  TKA.route('admin', 'pengaturan-guru', function (c) {
+    c.live();
+    c.root.innerHTML = U.pageHead('Pengaturan Guru & Pengawas', 'Atur mata pelajaran dan kelas yang diampu setiap guru. Dipakai untuk membatasi Bank Soal dan jadwal ujian.') +
+      '<div class="pgwrap"><div class="card"><div class="col g12"><input class="input" placeholder="Cari guru…" data-i="pg_q" data-ev="input" value="' + esc(PG.q) + '"><div id="pgl"></div></div></div>' +
+      '<div class="card" id="pgr">' + U.skel(3, 60) + '</div></div>';
+    pgDrawL = $('#pgl'); pgDrawR = $('#pgr');
+    const selesai = () => { if (!PG.sel && pgGuru().length) pgPick(pgGuru()[0]); pgDrawKiri(); pgDrawKanan(); };
+    selesai();
+    D.swr('users', () => { selesai(); }).catch(U.err);
+    return () => { pgDrawL = null; pgDrawR = null; };
+  });
+  inp.pg_q = U.debounce(el => { PG.q = el.value; pgDrawKiri(); }, 150);
+  act.pg_pick = async el => {
+    if (PG.baru && !(await U.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?', { danger: true, ok: 'Lanjutkan' }))) return;
+    const u = pgGuru().filter(x => x.id === el.dataset.id)[0]; if (!u) return;
+    pgPick(u); pgDrawKiri(); pgDrawKanan();
+  };
+  act.pg_m = el => { el.checked ? PG.mapel.add(el.dataset.id) : PG.mapel.delete(el.dataset.id); PG.baru = true; pgDrawKanan(); };
+  act.pg_k = el => { el.checked ? PG.kelas.add(el.dataset.id) : PG.kelas.delete(el.dataset.id); PG.baru = true; pgDrawKanan(); };
+  act.pg_all = el => {
+    const g = el.dataset.g === 'm' ? M().mapel.map(m => m.id_mapel) : M().kelas.map(k => k.id_kelas);
+    const set = el.dataset.g === 'm' ? PG.mapel : PG.kelas; g.forEach(id => set.add(id));
+    PG.baru = true; pgDrawKanan();
+  };
+  act.pg_none = el => { (el.dataset.g === 'm' ? PG.mapel : PG.kelas).clear(); PG.baru = true; pgDrawKanan(); };
+  act.pg_reset = () => { const a = pgAkun(); if (a) pgPick(a); pgDrawKiri(); pgDrawKanan(); };
+  act.pg_save = async el => {
+    const a = pgAkun(); if (!a || !PG.baru) return;
+    el.disabled = true;
+    try {
+      await A.call('user.save', { id: a.id, nama: a.nama, status: a.status, id_mapel: Array.from(PG.mapel).join(','), kelas_ajar: Array.from(PG.kelas) });
+      D.invalidate('users'); await D.fetch('users');
+      PG.baru = false; U.toast('Pengaturan guru disimpan.', 'ok');
+      pgDrawKiri(); pgDrawKanan();
+    } catch (e) { U.err(e); }
+    finally { el.disabled = false; }
   };
 })();

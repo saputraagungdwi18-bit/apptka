@@ -71,8 +71,8 @@
     U.$$('#lseg button').forEach(b => b.classList.toggle('on', b.dataset.r === role));
     const sw = role === 'siswa';
     $('#lform').innerHTML =
-      '<div class="field"><label for="lu">' + (sw ? 'NISN' : 'Username') + '</label><div class="inpw">' + I(sw ? 'badge' : 'person') +
-      '<input id="lu" class="input" ' + (sw ? 'inputmode="numeric" maxlength="10" placeholder="10 digit NISN"' : 'placeholder="Username"') + ' autocomplete="username" autocapitalize="none" spellcheck="false"></div></div>' +
+      '<div class="field"><label for="lu">' + (sw ? 'NISN' : (S.role === 'guru' ? 'NIP' : 'Username')) + '</label><div class="inpw">' + I(sw ? 'badge' : 'person') +
+      '<input id="lu" class="input" ' + (sw ? 'inputmode="numeric" maxlength="10" placeholder="10 digit NISN"' : S.role === 'guru' ? 'inputmode="numeric" maxlength="18" placeholder="8–18 digit NIP"' : 'placeholder="Username"') + ' autocomplete="username" autocapitalize="none" spellcheck="false"></div></div>' +
       '<div class="field"><label for="lp">Kata sandi</label><div class="inpw">' + I('lock') + '<input id="lp" class="input" type="password" placeholder="Kata sandi" autocomplete="current-password"><button class="ibtn" type="button" data-a="l_eye" aria-label="Tampilkan sandi">' + I('visibility') + '</button></div></div>' +
       '<button class="btn lg block" id="lgo" data-a="l_go">Masuk ' + I('arrow_forward') + '</button>';
     lerr('');
@@ -83,6 +83,7 @@
     const u = $('#lu').value.trim(), p = $('#lp').value, btn = $('#lgo');
     if (!u || !p) return lerr('Isi ' + (S.role === 'siswa' ? 'NISN' : 'username') + ' dan kata sandi.');
     if (S.role === 'siswa' && !/^\d{10}$/.test(u)) return lerr('NISN terdiri dari 10 digit angka.');
+    if (S.role === 'guru' && !/^\d{8,18}$/.test(u)) return lerr('NIP terdiri dari 8–18 digit angka.');
     btn.disabled = true; btn.innerHTML = '<span class="sk" style="width:18px;height:18px;border-radius:50%"></span> Memeriksa...'; lerr('');
     try {
       const j = await A.call('auth.login', { peran: S.role, username: u, password: p });
@@ -102,7 +103,7 @@
   const NAV = {
     siswa: [['beranda', 'home', 'Beranda'], ['paket', 'assignment', 'Daftar Paket'], ['riwayat', 'history', 'Riwayat'], ['bantuan', 'help', 'Bantuan']],
     guru: [['dashboard', 'dashboard', 'Dashboard'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis']],
-    admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['cetak', 'id_card', 'Cetak Kartu & Data Pengguna'], ['kelas-mapel', 'school', 'Kelas Mapel & Ruang'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
+    admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['pengaturan-guru', 'manage_accounts', 'Pengaturan Guru & Pengawas'], ['cetak', 'id_card', 'Cetak Kartu & Data Pengguna'], ['kelas-mapel', 'school', 'Kelas Mapel & Ruang'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
   };
   function ensureShell() {
     const role = S.user.peran, app = document.getElementById('app');
@@ -222,6 +223,42 @@
     };
     const del = h.$('#fdel');
     if (del) del.onclick = async () => { try { const body = { hapus: true }; if (!self) body.id = u.id; await A.call('pengguna.foto', body); done(''); } catch (e) { U.err(e); } };
+    // Guru mengatur sendiri kelas yang diajarnya (dipakai untuk membatasi jadwal ujian). Pilihan berupa chip.
+    if (self && S.user.peran === 'guru') {
+      const kelasAll = (S.boot && S.boot.kelas) || [];
+      const sel = new Set(String((S.boot && S.boot.profil && S.boot.profil.kelas_ajar) || '').split(',').filter(Boolean));
+      let awal = Array.from(sel).sort().join(',');
+      const blok = document.createElement('div'); blok.className = 'card flat soft col g12 mt16 kajar';
+      const ringkas = () => { const n = sel.size; return n ? n + ' kelas dipilih' : 'Belum ada kelas dipilih'; };
+      const gambar = () => {
+        const box = blok.querySelector('#kchips');
+        box.innerHTML = kelasAll.length ? kelasAll.map(k => { const on = sel.has(k.id_kelas); return '<button type="button" class="kchip' + (on ? ' on' : '') + '" data-kid="' + esc(k.id_kelas) + '" aria-pressed="' + on + '">' + (on ? I('check', 'sm') : '') + esc(k.nama_kelas) + '</button>'; }).join('') : '<p class="sm muted">Belum ada kelas di data master.</p>';
+        blok.querySelector('#kringkas').textContent = ringkas();
+        const sudahBeda = Array.from(sel).sort().join(',') !== awal;
+        const tb = blok.querySelector('#kajarsv'); tb.classList.toggle('off', !sudahBeda);
+      };
+      blok.innerHTML = '<div class="row sp"><h4>Kelas yang saya ajar</h4><span class="sm muted" id="kringkas"></span></div>' +
+        '<p class="xs muted" style="margin-top:-6px">Ketuk kelas untuk memilih atau membatalkan. Jadwal ujian hanya dapat dibuat untuk kelas yang dipilih.</p>' +
+        '<div class="kchips" id="kchips"></div>' +
+        '<div class="row sp wrap"><button class="btn ghost sm" type="button" id="kclr">Kosongkan</button><button class="btn sm" type="button" id="kajarsv">' + I('save', 'sm') + 'Simpan kelas</button></div>';
+      h.el.querySelector('.mdl-b').appendChild(blok);
+      blok.querySelector('#kchips').addEventListener('click', e => {
+        const b = e.target.closest('[data-kid]'); if (!b) return;
+        const id = b.dataset.kid; sel.has(id) ? sel.delete(id) : sel.add(id); gambar();
+      });
+      blok.querySelector('#kclr').onclick = () => { sel.clear(); gambar(); };
+      blok.querySelector('#kajarsv').onclick = async () => {
+        const ids = Array.from(sel);
+        const btn = blok.querySelector('#kajarsv'); btn.disabled = true;
+        try {
+          await A.call('guru.kelas', { kelas_ajar: ids });
+          S.boot.profil.kelas_ajar = ids.join(','); awal = ids.slice().sort().join(',');
+          U.toast('Kelas yang diajar disimpan.', 'ok'); gambar();
+        } catch (e) { U.err(e); }
+        finally { btn.disabled = false; }
+      };
+      gambar();
+    }
   };
   TKA.actions.foto_me = () => TKA.fotoModal(S.user, true);
   TKA.actions.l_role = el => loginForm(el.dataset.r);

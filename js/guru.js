@@ -95,6 +95,7 @@
   async function soalForm(c, id) {
     let f = Object.assign({}, BLANK, { id_mapel: (mapelBolehOpt()[0] || [''])[0] || '' });
     c.root.innerHTML = '<div class="card">' + U.skel(3, 80) + '</div>';
+    if (!id && TKA._carry) { f = Object.assign(f, TKA._carry); TKA._carry = null; }
     if (id) { try { f = Object.assign(f, (await A.call('soal.get', { id_soal: id }, { read: true })).soal); } catch (e) { c.root.innerHTML = '<div class="card">' + U.empty('error', 'Soal tidak ditemukan', e.message, '<a class="btn mt16" href="#/soal">Kembali</a>') + '</div>'; return; } }
     const topiks = Array.from(new Set((D.peek('soal') || []).map(s => s.topik))).sort();
     const opts = ['a', 'b', 'c', 'd', 'e'].map(k => '<div class="row g8" style="align-items:flex-start"><label class="row g8" style="margin-top:8px;cursor:pointer" title="Jadikan kunci jawaban"><input type="radio" name="kunci" value="' + k.toUpperCase() + '" class="chk" data-i="g_fk"' + (f.kunci === k.toUpperCase() ? ' checked' : '') + '><b style="width:18px">' + k.toUpperCase() + '</b></label><textarea class="textarea grow" rows="1" style="min-height:40px" data-i="g_ff" data-ev="input" data-k="opsi_' + k + '" placeholder="Pilihan ' + k.toUpperCase() + (k === 'e' ? ' (opsional)' : '') + '">' + esc(f['opsi_' + k]) + '</textarea></div>').join('');
@@ -104,7 +105,7 @@
       '<div class="field"><label>Pertanyaan</label><textarea class="textarea" rows="5" data-i="g_ff" data-ev="input" data-k="pertanyaan" placeholder="Tulis pertanyaan…">' + esc(f.pertanyaan) + '</textarea><span class="hint">Awali baris dengan <code>$$ </code> untuk blok rumus, mis. <code>$$ f(x) = 2x³ − 5x + 1</code>. Gunakan **teks** untuk tebal. Simbol seperti √ ² ³ π ≤ dapat diketik langsung.</span></div>' +
       '<div class="field"><label>Gambar soal (opsional)</label><div id="gwrap">' + gambarBlok(f) + '</div></div></div>' +
       '<div class="card col g8"><h4>Pilihan jawaban</h4>' + opts + '</div><div class="card col g8"><h4>Pembahasan</h4><textarea class="textarea" rows="4" data-i="g_ff" data-ev="input" data-k="pembahasan" placeholder="Langkah penyelesaian…">' + esc(f.pembahasan) + '</textarea></div>' +
-      '<div class="row sp wrap"><a class="btn ghost" href="#/soal">Batal</a><div class="row g8"><button class="btn sec" data-a="g_ssave" data-st="Draft">Simpan draf</button><button class="btn" data-a="g_ssave" data-st="Aktif">' + I('publish') + 'Simpan & aktifkan</button></div></div></div>' +
+      '<div class="ss-bar"><a class="btn ghost" href="#/soal">Batal</a><div class="row g8"><button class="btn sec" data-a="g_ssave" data-st="Draft">' + I('save') + 'Simpan draf</button><button class="btn sec" data-a="g_ssave" data-st="Aktif" data-lanjut="1">' + I('skip_next') + 'Simpan & lanjut</button><button class="btn" data-a="g_ssave" data-st="Aktif">' + I('publish') + 'Simpan & aktifkan</button></div></div></div>' +
       '<div class="card" style="position:sticky;top:76px"><div class="up mb8">Pratinjau tampilan siswa</div><div id="spv"></div></div></div>';
     if (window.innerWidth < 960) $('#sfg').style.gridTemplateColumns = '1fr';
     const pv = () => { $('#spv').innerHTML = '<div class="q-meta">' + U.badge(f.topik || 'Topik', 'neu') + U.kes(f.kesulitan) + U.badge(String(f.poin || 1) + ' poin', 'info') + '</div><div class="q-txt" style="--qs:15px;line-height:24px">' + (U.teks(f.pertanyaan) || '<span class="muted">Pertanyaan…</span>') + '</div>' + (U.safeImg(f.gambar) ? '<img class="q-img" src="' + esc(U.safeImg(f.gambar)) + '" alt="">' : '') +
@@ -113,6 +114,11 @@
     return () => { TKA._sf = null; };
   }
   // ---- impor dari dokumen (PDF/DOC/DOCX) atau Google Docs: admin & guru (mapel yang diampu) ----
+  // Kelas yang boleh dijadwalkan: guru hanya kelas yang diajarnya (jika sudah diatur); admin semua kelas.
+  function kelasUntukUser() {
+    const all = M().kelas, ka = String((S.boot && S.boot.profil && S.boot.profil.kelas_ajar) || '').split(',').filter(Boolean);
+    return S.user.peran === 'admin' || !ka.length ? all : all.filter(k => ka.indexOf(k.id_kelas) > -1);
+  }
   function mapelBolehOpt() {
     const ms = String((S.boot && S.boot.profil && S.boot.profil.mapel) || '').split(',').filter(Boolean);
     return M().mapel.filter(m => S.user.peran === 'admin' || !ms.length || ms.indexOf(m.id_mapel) > -1).map(m => [m.id_mapel, m.nama_mapel]);
@@ -230,7 +236,7 @@
     const F = TKA._sf; if (!F) return;
     const f = Object.assign({}, F.f, { status: el.dataset.st }); if (F.id) f.id_soal = F.id;
     el.disabled = true;
-    try { await A.call('soal.save', f); D.invalidate('soal'); await D.fetch('soal'); U.toast('Soal tersimpan' + (el.dataset.st === 'Aktif' ? ' dan diaktifkan.' : ' sebagai draf.'), 'ok'); TKA.go('soal'); }
+    try { await A.call('soal.save', f); D.invalidate('soal'); await D.fetch('soal'); U.toast('Soal tersimpan' + (el.dataset.st === 'Aktif' ? ' dan diaktifkan.' : ' sebagai draf.'), 'ok'); if (el.dataset.lanjut === '1' && !F.id) { TKA._carry = { id_mapel: F.f.id_mapel, topik: F.f.topik, kesulitan: F.f.kesulitan, poin: F.f.poin }; TKA.go('soal/baru'); } else TKA.go('soal'); }
     catch (e) { el.disabled = false; U.err(e); }
   };
 
@@ -440,7 +446,7 @@
   };
   function tokenBaru() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
   function jForm(j) {
-    const paket = (D.peek('paket') || []).filter(p => p.status === 'Terpublikasi' && p.jenis === 'Resmi'), kl = M().kelas, now = Date.now();
+    const paket = (D.peek('paket') || []).filter(p => p.status === 'Terpublikasi' && p.jenis === 'Resmi'), kl = kelasUntukUser(), now = Date.now();
     if (!paket.length && !j) return U.modal({ title: 'Belum ada paket resmi', body: '<p>Buat paket berjenis <b>Ujian resmi</b> dan publikasikan terlebih dahulu.</p>', footer: '<a class="btn" href="#/paket-ujian/baru" data-a="m_close">Buat paket</a>' });
     const start = j ? j.mulai : Math.ceil((now + 1800e3) / 900e3) * 900e3;
     const h = U.modal({ title: j ? 'Ubah jadwal' : 'Buat jadwal ujian', cls: 'wide', body: '<div class="col g16"><div class="field"><label>Paket ujian</label><select class="select" id="jpk">' + U.opt(paket.map(p => [p.id_paket, p.nama + ' (' + p.jumlah_soal + ' soal, ' + p.durasi + ' mnt)']), j ? j.id_paket : '', 'Pilih paket') + '</select></div>' +
