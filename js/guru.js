@@ -112,6 +112,30 @@
     TKA._sf = { f: f, id: id, pv: pv }; pv(); bindGambar();
     return () => { TKA._sf = null; };
   }
+  // ---- impor dari dokumen (PDF/DOC/DOCX) atau Google Docs: khusus admin ----
+  function dokumenBlok() {
+    return '<div class="card flat soft col g8 mt16"><h4>Impor dari dokumen</h4>' +
+      '<p class="xs muted">Untuk PDF, DOC, DOCX, atau Google Docs. Format soal: nomor, pilihan A sampai E, lalu baris <code>Kunci: B</code>.</p>' +
+      '<div class="field"><label>Mata pelajaran untuk semua soal dokumen</label><select class="select" id="dmp">' + U.opt(mapelOpt(), '', 'Pilih mata pelajaran') + '</select></div>' +
+      '<div class="field"><label>Atau tempel tautan Google Docs</label><div class="row g8"><input class="input grow" id="gdurl" placeholder="https://docs.google.com/document/d/…" autocomplete="off"><button class="btn sec" data-a="g_gdocs" type="button">' + I('cloud_download') + 'Baca</button></div><span class="hint">Dokumen harus dibagikan ke akun admin ini (minimal Pembaca). Dokumen asli tidak diubah.</span></div></div>';
+  }
+  function hasilImpor(h, j) {
+    h.$('.mdl-b').innerHTML = '<div class="alert ' + (j.gagal.length ? 'warn' : 'ok') + '">' + I(j.gagal.length ? 'warning' : 'check_circle') + '<div><b>' + j.berhasil + ' soal berhasil diimpor</b> dari ' + j.terbaca + ' yang terbaca' + (j.gagal.length ? ', ' + j.gagal.length + ' perlu diperiksa.' : '. Soal masuk sebagai Draft.') + '</div></div>' +
+      (j.gagal.length ? '<ul class="sm mt8" style="max-height:200px;overflow:auto">' + j.gagal.slice(0, 50).map(x => '<li>' + esc(x.baris) + ': ' + esc(x.pesan) + '</li>').join('') + '</ul>' : '');
+    D.invalidate('soal'); D.fetch('soal').then(() => { if (TKA._sd) TKA.go('soal'); }).catch(() => {});
+  }
+  act.g_gdocs = async el => {
+    const h = TKA._imp; if (!h) return;
+    const idm = (h.$('#dmp') || {}).value, url = (h.$('#gdurl') || {}).value || '';
+    if (!idm) return U.toast('Pilih mata pelajaran terlebih dahulu.', 'warn');
+    if (!url.trim()) return U.toast('Tempel tautan Google Docs terlebih dahulu.', 'warn');
+    el.disabled = true; el.textContent = 'Membaca…';
+    try {
+      const j = await A.call('soal.impor_gdocs', { id_mapel: idm, url: url.trim() }, { timeout: 120000, retry: 0 });
+      hasilImpor(h, j); const igo = h.$('#igo'); if (igo) igo.remove();
+    } catch (e) { el.disabled = false; el.textContent = 'Baca'; U.err(e); }
+  };
+
   // ---- gambar soal: unggah (dikecilkan di peramban, lalu dikirim ke Google Drive) ----
   function gambarBlok(f) {
     return f.gambar
@@ -172,7 +196,7 @@
   act.g_simp = () => {
     const h = U.modal({ title: 'Import soal', sub: 'CSV atau Excel (.xlsx). Baris pertama = judul kolom.', cls: 'wide', body:
       '<div class="col g16"><div class="alert info">' + I('info') + '<div>Kolom: <code>' + TPL.join(', ') + '</code>. Nama <b>mapel</b> harus sama dengan data master. <button class="btn sec sm" data-a="g_tpl" style="margin-left:8px">' + I('download', 'sm') + 'Unduh templat</button></div></div>' +
-      '<label class="dz" id="dz"><input type="file" id="ifile" accept="' + (isAdmin() ? '.csv,.xlsx,.xls,.pdf,.doc,.docx,text/csv' : '.csv,.xlsx,.xls,text/csv') + '" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas atau seret ke sini</div><div class="sm">CSV UTF-8 / Excel</div></label><div id="iprev"></div></div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="igo" data-a="g_igo">Import</button>' });
+      '<label class="dz" id="dz"><input type="file" id="ifile" accept="' + (isAdmin() ? '.csv,.xlsx,.xls,.pdf,.doc,.docx,text/csv' : '.csv,.xlsx,.xls,text/csv') + '" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas atau seret ke sini</div><div class="sm">CSV UTF-8 / Excel</div></label><div id="iprev"></div>' + (isAdmin() ? dokumenBlok() : '') + '</div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="igo" data-a="g_igo">Import</button>' });
     const fi = h.$('#ifile'), dz = h.$('#dz');
     const load = async f => {
       if (/\.(pdf|docx?)$/i.test(f.name)) {
@@ -180,7 +204,7 @@
         const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = () => rej(new Error('Gagal membaca berkas.')); fr.readAsDataURL(f); });
         const mime = /\.pdf$/i.test(f.name) ? 'application/pdf' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/msword';
         h.doc = { data: data, mime: mime, nama: f.name }; h.rows = null;
-        h.$('#iprev').innerHTML = '<div class="alert info">' + I('description') + '<div><b>' + esc(f.name) + '</b> siap diimpor. Soal dikenali dari format: nomor soal, pilihan A sampai E, lalu baris <code>Kunci: B</code>. Semua soal masuk sebagai Draft.</div></div><div class="field mt16"><label>Mata pelajaran untuk semua soal</label><select class="select" id="dmp">' + U.opt(mapelOpt(), '', 'Pilih mata pelajaran') + '</select></div>';
+        h.$('#iprev').innerHTML = '<div class="alert info">' + I('description') + '<div><b>' + esc(f.name) + '</b> siap diimpor. Soal dikenali dari format: nomor soal, pilihan A sampai E, lalu baris <code>Kunci: B</code>. Semua soal masuk sebagai Draft.</div></div>';
         h.$('#igo').classList.remove('off');
         return;
       }
@@ -202,8 +226,7 @@
     try {
       const j = await A.call('soal.impor_dokumen', { id_mapel: idm, mime: h.doc.mime, nama: h.doc.nama, data: h.doc.data }, { timeout: 120000, retry: 0 });
       D.invalidate('soal'); D.fetch('soal').then(() => { if (TKA._sd) TKA.go('soal'); }).catch(() => {});
-      h.$('.mdl-b').innerHTML = '<div class="alert ' + (j.gagal.length ? 'warn' : 'ok') + '">' + I(j.gagal.length ? 'warning' : 'check_circle') + '<div><b>' + j.berhasil + ' soal berhasil diimpor</b> dari ' + j.terbaca + ' yang terbaca' + (j.gagal.length ? ', ' + j.gagal.length + ' perlu diperiksa.' : '. Soal masuk sebagai Draft.') + '</div></div>' +
-        (j.gagal.length ? '<ul class="sm mt8" style="max-height:200px;overflow:auto">' + j.gagal.slice(0, 50).map(x => '<li>' + esc(x.baris) + ': ' + esc(x.pesan) + '</li>').join('') + '</ul>' : '');
+      hasilImpor(h, j);
       el.remove();
     } catch (e) { el.disabled = false; el.textContent = 'Impor'; U.err(e); }
   }

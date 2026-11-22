@@ -102,7 +102,7 @@
   const NAV = {
     siswa: [['beranda', 'home', 'Beranda'], ['paket', 'assignment', 'Daftar Paket'], ['riwayat', 'history', 'Riwayat'], ['bantuan', 'help', 'Bantuan']],
     guru: [['dashboard', 'dashboard', 'Dashboard'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis']],
-    admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['cetak', 'id_card', 'Cetak Kartu & Download Data Pengguna'], ['kelas-mapel', 'school', 'Kelas & Mapel'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
+    admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['cetak', 'id_card', 'Cetak Kartu & Data Pengguna'], ['kelas-mapel', 'school', 'Kelas Mapel & Ruang'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
   };
   function ensureShell() {
     const role = S.user.peran, app = document.getElementById('app');

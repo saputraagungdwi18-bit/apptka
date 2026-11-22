@@ -1,12 +1,12 @@
 /* admin.js — Dashboard admin, Manajemen Pengguna, Kelas & Mapel, Pengaturan Sistem (+ audit). */
 (function () {
   const TKA = window.TKA, U = TKA.ui, A = TKA.api, D = TKA.D, S = TKA.S, esc = U.esc, I = U.i, $ = U.$, act = TKA.actions, inp = TKA.inputs;
-  const M = () => ({ mapel: (S.boot && S.boot.mapel) || [], kelas: (S.boot && S.boot.kelas) || [] });
+  const M = () => ({ mapel: (S.boot && S.boot.mapel) || [], kelas: (S.boot && S.boot.kelas) || [], ruang: (S.boot && S.boot.ruang) || [] });
   const kelasOpt = () => M().kelas.map(k => [k.id_kelas, k.nama_kelas]);
   const mapelNm = id => { const m = M().mapel.filter(x => x.id_mapel === id)[0]; return m ? m.nama_mapel : id; };
   const PRN = { siswa: ['Siswa', 'info'], guru: ['Guru', 'warn'], admin: ['Admin', 'neu'] };
   const USB = { Aktif: 'ok', Nonaktif: 'neu', Terkunci: 'bad' };
-  function setMaster(j) { if (j && j.kelas && S.boot) { S.boot.kelas = j.kelas; S.boot.mapel = j.mapel; } D.invalidate('users'); }
+  function setMaster(j) { if (j && j.kelas && S.boot) { S.boot.kelas = j.kelas; S.boot.mapel = j.mapel; S.boot.ruang = j.ruang || []; } D.invalidate('users'); }
 
   // ============================================================ DASHBOARD ADMIN
   TKA.route('admin', 'dashboard', function (c) {
@@ -128,9 +128,17 @@
     c.live();
     const draw = () => {
       const m = M(), us = D.peek('users') || [], cnt = id => us.filter(u => u.id_kelas === id).length;
-      c.root.innerHTML = U.pageHead('Kelas & mata pelajaran', 'Data master yang dipakai di seluruh aplikasi.') + '<div class="grid g2" style="align-items:start">' +
-        '<div class="card pad0"><div class="card-h"><h3>Kelas</h3><button class="btn sm" data-a="a_kform">' + I('add', 'sm') + 'Tambah</button></div>' + (m.kelas.length ? '<ul class="feed" style="padding:0 20px">' + m.kelas.map(k => '<li class="row sp"><div><b>' + esc(k.nama_kelas) + '</b><div class="xs muted">' + esc([k.tingkat, k.peminatan, k.ruang ? 'Ruang ' + k.ruang : ''].filter(Boolean).join(' · ')) + (us.length ? ' · ' + cnt(k.id_kelas) + ' siswa' : '') + '</div></div><span class="acts"><button class="ibtn" data-a="a_kform" data-id="' + k.id_kelas + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_kdel" data-id="' + k.id_kelas + '">' + I('delete') + '</button></span></li>').join('') + '</ul>' : U.empty('school', 'Belum ada kelas')) + '</div>' +
-        '<div class="card pad0"><div class="card-h"><h3>Mata pelajaran</h3><button class="btn sm" data-a="a_mform">' + I('add', 'sm') + 'Tambah</button></div>' + (m.mapel.length ? '<ul class="feed" style="padding:0 20px">' + m.mapel.map(k => '<li class="row sp"><div><b>' + esc(k.nama_mapel) + '</b><div class="xs muted">' + esc(k.kelompok) + '</div></div><span class="acts"><button class="ibtn" data-a="a_mform" data-id="' + k.id_mapel + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_mdel" data-id="' + k.id_mapel + '">' + I('delete') + '</button></span></li>').join('') + '</ul>' : U.empty('menu_book', 'Belum ada mapel')) + '</div></div>';
+      const kartu = (judul, aksi, items, kosong, ikon) => '<div class="card pad0"><div class="card-h"><h3>' + judul + '</h3><button class="btn sm" data-a="' + aksi + '">' + I('add', 'sm') + 'Tambah</button></div>' +
+        (items.length ? '<ul class="feed" style="padding:0 20px">' + items.join('') + '</ul>' : U.empty(ikon, kosong)) + '</div>';
+      const kelasItems = m.kelas.map(k => '<li class="row sp"><div><b>' + esc(k.nama_kelas) + '</b><div class="xs muted">' + esc([k.tingkat, k.peminatan].filter(Boolean).join(' · ')) + ' · ' + cnt(k.id_kelas) + ' siswa</div></div><span class="acts"><button class="ibtn" data-a="a_kform" data-id="' + k.id_kelas + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_kdel" data-id="' + k.id_kelas + '">' + I('delete') + '</button></span></li>');
+      const mapelItems = m.mapel.map(k => '<li class="row sp"><div><b>' + esc(k.nama_mapel) + '</b><div class="xs muted">' + esc(k.kelompok) + '</div></div><span class="acts"><button class="ibtn" data-a="a_mform" data-id="' + k.id_mapel + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_mdel" data-id="' + k.id_mapel + '">' + I('delete') + '</button></span></li>');
+      const ruangItems = m.ruang.map(r => '<li class="row sp"><div><b>' + esc(r.nama_ruang) + '</b><div class="xs muted">' + esc(r.keterangan || 'Tanpa keterangan') + '</div></div><span class="acts"><button class="ibtn" data-a="a_rform" data-id="' + r.id_ruang + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_rdel" data-id="' + r.id_ruang + '">' + I('delete') + '</button></span></li>');
+      c.root.innerHTML = U.pageHead('Kelas Mapel & Ruang', 'Data master kelas, mata pelajaran, dan ruang yang dipakai di seluruh aplikasi.') +
+        '<div class="grid g3" style="align-items:start">' +
+        kartu('Kelas', 'a_kform', kelasItems, 'Belum ada kelas', 'school') +
+        kartu('Mata pelajaran', 'a_mform', mapelItems, 'Belum ada mapel', 'menu_book') +
+        kartu('Ruang', 'a_rform', ruangItems, 'Belum ada ruang', 'meeting_room') +
+        '</div>';
     };
     draw(); TKA._kd = draw;
     D.swr('users', draw).catch(() => {});
@@ -139,8 +147,8 @@
   const kmRedraw = j => { setMaster(j); if (TKA._kd) TKA._kd(); };
   act.a_kform = el => {
     const k = el.dataset.id ? M().kelas.filter(x => x.id_kelas === el.dataset.id)[0] : null;
-    const h = U.modal({ title: k ? 'Ubah kelas' : 'Tambah kelas', body: '<div class="col g16"><div class="field"><label>Nama kelas</label><input class="input" id="kn" value="' + esc(k ? k.nama_kelas : '') + '" placeholder="mis. XII IPA 1"></div><div class="grid g2"><div class="field"><label>Tingkat</label><input class="input" id="kt" value="' + esc(k ? k.tingkat : '') + '" placeholder="XII"></div><div class="field"><label>Peminatan</label><input class="input" id="kp" value="' + esc(k ? k.peminatan : '') + '" placeholder="IPA"></div></div><div class="field"><label>Wali kelas</label><input class="input" id="kw" value="' + esc(k ? k.wali : '') + '"></div><div class="field"><label>Ruang</label><input class="input" id="kr" value="' + esc(k ? k.ruang || '' : '') + '" placeholder="mis. Ruang 12A / Lab Biologi"></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="ksv">Simpan</button>' });
-    h.$('#ksv').onclick = async () => { try { const j = await A.call('kelas.save', { id_kelas: k ? k.id_kelas : '', nama_kelas: h.$('#kn').value, tingkat: h.$('#kt').value, peminatan: h.$('#kp').value, wali: h.$('#kw').value, ruang: h.$('#kr').value }); h.close(); kmRedraw(j); U.toast('Kelas tersimpan.', 'ok'); } catch (e) { U.err(e); } };
+    const h = U.modal({ title: k ? 'Ubah kelas' : 'Tambah kelas', body: '<div class="col g16"><div class="field"><label>Nama kelas</label><input class="input" id="kn" value="' + esc(k ? k.nama_kelas : '') + '" placeholder="mis. XII IPA 1"></div><div class="grid g2"><div class="field"><label>Tingkat</label><input class="input" id="kt" value="' + esc(k ? k.tingkat : '') + '" placeholder="XII"></div><div class="field"><label>Peminatan</label><input class="input" id="kp" value="' + esc(k ? k.peminatan : '') + '" placeholder="IPA"></div></div><div class="field"><label>Wali kelas</label><input class="input" id="kw" value="' + esc(k ? k.wali : '') + '"></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="ksv">Simpan</button>' });
+    h.$('#ksv').onclick = async () => { try { const j = await A.call('kelas.save', { id_kelas: k ? k.id_kelas : '', nama_kelas: h.$('#kn').value, tingkat: h.$('#kt').value, peminatan: h.$('#kp').value, wali: h.$('#kw').value }); h.close(); kmRedraw(j); U.toast('Kelas tersimpan.', 'ok'); } catch (e) { U.err(e); } };
   };
   act.a_kdel = async el => { if (!(await U.confirm('Hapus kelas ini?', { danger: true, ok: 'Hapus' }))) return; kmRedraw(await A.call('kelas.delete', { id_kelas: el.dataset.id })); U.toast('Kelas dihapus.', 'ok'); };
   act.a_mform = el => {
@@ -148,6 +156,12 @@
     const h = U.modal({ title: k ? 'Ubah mata pelajaran' : 'Tambah mata pelajaran', body: '<div class="col g16"><div class="field"><label>Nama</label><input class="input" id="mn" value="' + esc(k ? k.nama_mapel : '') + '"></div><div class="field"><label>Kelompok</label><select class="select" id="mk">' + U.opt([['Inti', 'Inti'], ['Pilihan', 'Pilihan'], ['Khusus', 'Khusus']], k ? k.kelompok : 'Inti') + '</select></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="msv">Simpan</button>' });
     h.$('#msv').onclick = async () => { try { const j = await A.call('mapel.save', { id_mapel: k ? k.id_mapel : '', nama_mapel: h.$('#mn').value, kelompok: h.$('#mk').value }); h.close(); kmRedraw(j); U.toast('Mapel tersimpan.', 'ok'); } catch (e) { U.err(e); } };
   };
+  act.a_rform = el => {
+    const r = el.dataset.id ? M().ruang.filter(x => x.id_ruang === el.dataset.id)[0] : null;
+    const h = U.modal({ title: r ? 'Ubah ruang' : 'Tambah ruang', body: '<div class="col g16"><div class="field"><label>Nama ruang</label><input class="input" id="rn" value="' + esc(r ? r.nama_ruang : '') + '" placeholder="mis. Ruang 12A / Lab Biologi"></div><div class="field"><label>Keterangan (opsional)</label><input class="input" id="rk" value="' + esc(r ? r.keterangan || '' : '') + '" placeholder="mis. Kapasitas 36 kursi"></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="rsv">Simpan</button>' });
+    h.$('#rsv').onclick = async () => { try { const j = await A.call('ruang.save', { id_ruang: r ? r.id_ruang : '', nama_ruang: h.$('#rn').value, keterangan: h.$('#rk').value }); h.close(); kmRedraw(j); U.toast('Ruang tersimpan.', 'ok'); } catch (e) { U.err(e); } };
+  };
+  act.a_rdel = async el => { if (!(await U.confirm('Hapus ruang ini?', { danger: true, ok: 'Hapus' }))) return; kmRedraw(await A.call('ruang.delete', { id_ruang: el.dataset.id })); U.toast('Ruang dihapus.', 'ok'); };
   act.a_mdel = async el => { if (!(await U.confirm('Hapus mata pelajaran ini?', { danger: true, ok: 'Hapus' }))) return; kmRedraw(await A.call('mapel.delete', { id_mapel: el.dataset.id })); U.toast('Mapel dihapus.', 'ok'); };
 
   // ============================================================ PENGATURAN
@@ -253,7 +267,7 @@
       const b = $('#cfbtn'); if (b) b.dataset.n = t.length;
     };
     const guruOpt = () => list.filter(u => u.peran === 'guru').map(u => [u.id, u.nama]);
-    c.root.innerHTML = U.pageHead('Cetak Kartu & Download Data Pengguna', 'Filter pengguna lalu unduh data, cetak kartu, atau reset sandi dan cetak kartu baru.',
+    c.root.innerHTML = U.pageHead('Cetak Kartu & Data Pengguna', 'Filter pengguna lalu unduh data, cetak kartu, atau reset sandi dan cetak kartu baru.',
         '<button class="btn sec" data-a="c_csv">' + I('download') + 'Unduh data (CSV)</button><button class="btn sec" data-a="c_print">' + I('print') + 'Cetak kartu</button><button class="btn" data-a="c_reset">' + I('key') + 'Reset sandi & cetak kartu</button>') +
       '<div class="card pad0"><div class="filters">' +
       '<select class="select" data-i="c_f" data-k="peran">' + U.opt([['siswa', 'Siswa'], ['guru', 'Guru / Pengawas'], ['admin', 'Administrator']], CF.peran, 'Semua peran') + '</select>' +
