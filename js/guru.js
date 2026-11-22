@@ -112,11 +112,15 @@
     TKA._sf = { f: f, id: id, pv: pv }; pv(); bindGambar();
     return () => { TKA._sf = null; };
   }
-  // ---- impor dari dokumen (PDF/DOC/DOCX) atau Google Docs: khusus admin ----
+  // ---- impor dari dokumen (PDF/DOC/DOCX) atau Google Docs: admin & guru (mapel yang diampu) ----
+  function mapelBolehOpt() {
+    const ms = String((S.boot && S.boot.profil && S.boot.profil.mapel) || '').split(',').filter(Boolean);
+    return M().mapel.filter(m => S.user.peran === 'admin' || !ms.length || ms.indexOf(m.id_mapel) > -1).map(m => [m.id_mapel, m.nama_mapel]);
+  }
   function dokumenBlok() {
     return '<div class="card flat soft col g8 mt16"><h4>Impor dari dokumen</h4>' +
       '<p class="xs muted">Untuk PDF, DOC, DOCX, atau Google Docs. Format soal: nomor, pilihan A sampai E, lalu baris <code>Kunci: B</code>.</p>' +
-      '<div class="field"><label>Mata pelajaran untuk semua soal dokumen</label><select class="select" id="dmp">' + U.opt(mapelOpt(), '', 'Pilih mata pelajaran') + '</select></div>' +
+      '<div class="field"><label>Mata pelajaran untuk semua soal dokumen</label><select class="select" id="dmp">' + U.opt(mapelBolehOpt(), '', 'Pilih mata pelajaran') + '</select></div>' +
       '<div class="field"><label>Atau tempel tautan Google Docs</label><div class="row g8"><input class="input grow" id="gdurl" placeholder="https://docs.google.com/document/d/…" autocomplete="off"><button class="btn sec" data-a="g_gdocs" type="button">' + I('cloud_download') + 'Baca</button></div><span class="hint">Dokumen harus dibagikan ke akun admin ini (minimal Pembaca). Dokumen asli tidak diubah.</span></div></div>';
   }
   function hasilImpor(h, j) {
@@ -196,11 +200,10 @@
   act.g_simp = () => {
     const h = U.modal({ title: 'Import soal', sub: 'CSV atau Excel (.xlsx). Baris pertama = judul kolom.', cls: 'wide', body:
       '<div class="col g16"><div class="alert info">' + I('info') + '<div>Kolom: <code>' + TPL.join(', ') + '</code>. Nama <b>mapel</b> harus sama dengan data master. <button class="btn sec sm" data-a="g_tpl" style="margin-left:8px">' + I('download', 'sm') + 'Unduh templat</button></div></div>' +
-      '<label class="dz" id="dz"><input type="file" id="ifile" accept="' + (isAdmin() ? '.csv,.xlsx,.xls,.pdf,.doc,.docx,text/csv' : '.csv,.xlsx,.xls,text/csv') + '" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas atau seret ke sini</div><div class="sm">CSV UTF-8 / Excel</div></label><div id="iprev"></div>' + (isAdmin() ? dokumenBlok() : '') + '</div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="igo" data-a="g_igo">Import</button>' });
+      '<label class="dz" id="dz"><input type="file" id="ifile" accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,text/csv" hidden>' + I('upload_file', 'xl') + '<div class="b mt8">Pilih berkas atau seret ke sini</div><div class="sm">CSV UTF-8 / Excel</div></label><div id="iprev"></div>' + dokumenBlok() + '</div>', footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn off" id="igo" data-a="g_igo">Import</button>' });
     const fi = h.$('#ifile'), dz = h.$('#dz');
     const load = async f => {
       if (/\.(pdf|docx?)$/i.test(f.name)) {
-        if (!isAdmin()) return U.toast('Import dokumen hanya untuk admin.', 'warn');
         const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = () => rej(new Error('Gagal membaca berkas.')); fr.readAsDataURL(f); });
         const mime = /\.pdf$/i.test(f.name) ? 'application/pdf' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/msword';
         h.doc = { data: data, mime: mime, nama: f.name }; h.rows = null;
