@@ -224,7 +224,8 @@
     const del = h.$('#fdel');
     if (del) del.onclick = async () => { try { const body = { hapus: true }; if (!self) body.id = u.id; await A.call('pengguna.foto', body); done(''); } catch (e) { U.err(e); } };
     // Guru mengatur sendiri kelas yang diajarnya (dipakai untuk membatasi jadwal ujian). Pilihan berupa chip.
-    if (self && S.user.peran === 'guru') {
+    const KELAS_AJAR_AKTIF = true;
+    if (KELAS_AJAR_AKTIF && self && S.user.peran === 'guru') {
       const kelasAll = (S.boot && S.boot.kelas) || [];
       const sel = new Set(String((S.boot && S.boot.profil && S.boot.profil.kelas_ajar) || '').split(',').filter(Boolean));
       let awal = Array.from(sel).sort().join(',');

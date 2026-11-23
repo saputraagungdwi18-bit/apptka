@@ -1,12 +1,12 @@
 /* admin.js — Dashboard admin, Manajemen Pengguna, Kelas & Mapel, Pengaturan Sistem (+ audit). */
 (function () {
   const TKA = window.TKA, U = TKA.ui, A = TKA.api, D = TKA.D, S = TKA.S, esc = U.esc, I = U.i, $ = U.$, act = TKA.actions, inp = TKA.inputs;
-  const M = () => ({ mapel: (S.boot && S.boot.mapel) || [], kelas: (S.boot && S.boot.kelas) || [], ruang: (S.boot && S.boot.ruang) || [] });
+  const M = () => ({ mapel: (S.boot && S.boot.mapel) || [], kelas: (S.boot && S.boot.kelas) || [], ruang: (S.boot && S.boot.ruang) || [], guru: (S.boot && S.boot.guru) || [] });
   const kelasOpt = () => M().kelas.map(k => [k.id_kelas, k.nama_kelas]);
   const mapelNm = id => { const m = M().mapel.filter(x => x.id_mapel === id)[0]; return m ? m.nama_mapel : id; };
   const PRN = { siswa: ['Siswa', 'info'], guru: ['Guru', 'warn'], admin: ['Admin', 'neu'] };
   const USB = { Aktif: 'ok', Nonaktif: 'neu', Terkunci: 'bad' };
-  function setMaster(j) { if (j && j.kelas && S.boot) { S.boot.kelas = j.kelas; S.boot.mapel = j.mapel; S.boot.ruang = j.ruang || []; } D.invalidate('users'); }
+  function setMaster(j) { if (j && j.kelas && S.boot) { S.boot.kelas = j.kelas; S.boot.mapel = j.mapel; S.boot.ruang = j.ruang || []; S.boot.guru = j.guru || []; } D.invalidate('users'); }
 
   // ============================================================ DASHBOARD ADMIN
   TKA.route('admin', 'dashboard', function (c) {
@@ -75,14 +75,20 @@
     const sync = () => { const p = h.$('#fpr').value; h.$('#fkl').classList.toggle('hide', p !== 'siswa'); h.$('#fru').classList.toggle('hide', p !== 'siswa'); h.$('#fmp').classList.toggle('hide', p !== 'guru'); h.$('#flu').textContent = p === 'siswa' ? 'NISN (10 digit)' : p === 'guru' ? 'NIP (8–18 digit)' : 'Username'; };
     h.$('#fpr').addEventListener('change', sync); sync();
     const kaWrap = document.createElement('div'); kaWrap.className = 'field'; kaWrap.id = 'fka';
-    const kaSel = u && u.kelas_ajar ? u.kelas_ajar : [];
-    kaWrap.innerHTML = '<label>Kelas yang diajar</label><select class="select" id="fkaa" multiple size="5">' + kelasOpt().map(k => '<option value="' + esc(k[0]) + '"' + (kaSel.indexOf(k[0]) > -1 ? ' selected' : '') + '>' + esc(k[1]) + '</option>').join('') + '</select><span class="hint">Pilih satu atau lebih kelas (Ctrl/⌘ untuk lebih dari satu). Guru hanya dapat menjadwalkan ujian untuk kelas ini.</span>';
+    const kaSel = new Set(u && u.kelas_ajar ? String(u.kelas_ajar).split(',').filter(Boolean) : []);
+    const kaOpsi = M().kelas;
+    const kaRingkas = () => { const n = kaWrap.querySelectorAll('#fkaa input:checked').length; kaWrap.querySelector('#fkacnt').textContent = n ? n + ' kelas dipilih' : 'Belum ada kelas dipilih'; };
+    kaWrap.innerHTML = '<div class="row sp"><label>Kelas yang diajar</label><span class="sm muted" id="fkacnt"></span></div>' +
+      '<div class="sel-list" id="fkaa" style="max-height:160px">' + (kaOpsi.length ? kaOpsi.map(k => '<label><input type="checkbox" class="chk" value="' + esc(k.id_kelas) + '"' + (kaSel.has(k.id_kelas) ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>').join('') : '<p class="sm muted" style="padding:10px 12px">Belum ada kelas. Tambahkan dulu di menu Kelas Mapel &amp; Ruang.</p>') + '</div>' +
+      '<span class="hint">Guru hanya dapat membuat jadwal ujian untuk kelas yang dicentang. Jika tidak ada yang dicentang, guru dapat memilih semua kelas.</span>';
+    kaWrap.querySelector('#fkaa').addEventListener('change', kaRingkas);
+    kaRingkas();
     h.$('#fru').insertAdjacentElement('afterend', kaWrap);
     const syncKa = () => kaWrap.classList.toggle('hide', h.$('#fpr').value !== 'guru');
     h.$('#fpr').addEventListener('change', syncKa); syncKa(); h.uid = u ? u.id : null; TKA._uh = h;
   }
   act.a_usave = async el => {
-    const h = TKA._uh, b = { peran: h.$('#fpr').value, nama: h.$('#fnm').value, username: h.$('#fus').value.trim(), id_kelas: h.$('#fkls').value, id_ruang: h.$('#frua').value, kelas_ajar: Array.from(h.$('#fkaa') ? h.$('#fkaa').selectedOptions : []).map(o => o.value), id_mapel: U.$$('#fmp input:checked', h.el).map(i => i.value).join(','), password: h.$('#fpw').value };
+    const h = TKA._uh, b = { peran: h.$('#fpr').value, nama: h.$('#fnm').value, username: h.$('#fus').value.trim(), id_kelas: h.$('#fkls').value, id_ruang: h.$('#frua').value, kelas_ajar: U.$$('#fkaa input:checked', h.el).map(i => i.value), id_mapel: U.$$('#fmp input:checked', h.el).map(i => i.value).join(','), password: h.$('#fpw').value };
     if (h.uid) { b.id = h.uid; b.status = h.$('#fst').value; }
     el.disabled = true;
     try { const j = await A.call('user.save', b); h.close(); await refreshUsers(); if (!h.uid) showKartu([{ nama: b.nama, username: j.username, password: j.password, kelas: (M().kelas.filter(k => k.id_kelas === b.id_kelas)[0] || {}).nama_kelas || '', peran: b.peran }], 'Akun dibuat'); else U.toast('Perubahan disimpan.', 'ok'); }
@@ -177,7 +183,7 @@
       const m = M(), us = D.peek('users') || [], cnt = id => us.filter(u => u.id_kelas === id).length;
       const kartu = (judul, aksi, items, kosong, ikon) => '<div class="card pad0"><div class="card-h"><h3>' + judul + '</h3><button class="btn sm" data-a="' + aksi + '">' + I('add', 'sm') + 'Tambah</button></div>' +
         (items.length ? '<ul class="feed" style="padding:0 20px">' + items.join('') + '</ul>' : U.empty(ikon, kosong)) + '</div>';
-      const kelasItems = m.kelas.map(k => '<li class="row sp"><div><b>' + esc(k.nama_kelas) + '</b><div class="xs muted">' + esc([k.tingkat, k.peminatan].filter(Boolean).join(' · ')) + ' · ' + cnt(k.id_kelas) + ' siswa</div></div><span class="acts"><button class="ibtn" data-a="a_kform" data-id="' + k.id_kelas + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_kdel" data-id="' + k.id_kelas + '">' + I('delete') + '</button></span></li>');
+      const kelasItems = m.kelas.map(k => '<li class="row sp"><div><b>' + esc(k.nama_kelas) + '</b><div class="xs muted">' + esc([k.tingkat, k.peminatan, k.wali_nama ? 'Wali: ' + k.wali_nama : ''].filter(Boolean).join(' · ')) + ' · ' + cnt(k.id_kelas) + ' siswa</div></div><span class="acts"><button class="ibtn" data-a="a_kform" data-id="' + k.id_kelas + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_kdel" data-id="' + k.id_kelas + '">' + I('delete') + '</button></span></li>');
       const mapelItems = m.mapel.map(k => '<li class="row sp"><div><b>' + esc(k.nama_mapel) + '</b><div class="xs muted">' + esc(k.kelompok) + '</div></div><span class="acts"><button class="ibtn" data-a="a_mform" data-id="' + k.id_mapel + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_mdel" data-id="' + k.id_mapel + '">' + I('delete') + '</button></span></li>');
       const ruangItems = m.ruang.map(r => '<li class="row sp"><div><b>' + esc(r.nama_ruang) + '</b><div class="xs muted">' + esc(r.keterangan || 'Tanpa keterangan') + '</div></div><span class="acts"><button class="ibtn" data-a="a_rform" data-id="' + r.id_ruang + '">' + I('edit') + '</button><button class="ibtn dng" data-a="a_rdel" data-id="' + r.id_ruang + '">' + I('delete') + '</button></span></li>');
       c.root.innerHTML = U.pageHead('Kelas Mapel & Ruang', 'Data master kelas, mata pelajaran, dan ruang yang dipakai di seluruh aplikasi.') +
@@ -194,7 +200,7 @@
   const kmRedraw = j => { setMaster(j); if (TKA._kd) TKA._kd(); };
   act.a_kform = el => {
     const k = el.dataset.id ? M().kelas.filter(x => x.id_kelas === el.dataset.id)[0] : null;
-    const h = U.modal({ title: k ? 'Ubah kelas' : 'Tambah kelas', body: '<div class="col g16"><div class="field"><label>Nama kelas</label><input class="input" id="kn" value="' + esc(k ? k.nama_kelas : '') + '" placeholder="mis. XII IPA 1"></div><div class="grid g2"><div class="field"><label>Tingkat</label><input class="input" id="kt" value="' + esc(k ? k.tingkat : '') + '" placeholder="XII"></div><div class="field"><label>Peminatan</label><input class="input" id="kp" value="' + esc(k ? k.peminatan : '') + '" placeholder="IPA"></div></div><div class="field"><label>Wali kelas</label><input class="input" id="kw" value="' + esc(k ? k.wali : '') + '"></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="ksv">Simpan</button>' });
+    const h = U.modal({ title: k ? 'Ubah kelas' : 'Tambah kelas', body: '<div class="col g16"><div class="field"><label>Nama kelas</label><input class="input" id="kn" value="' + esc(k ? k.nama_kelas : '') + '" placeholder="mis. X TKL 1"></div><div class="grid g2"><div class="field"><label>Tingkat</label><input class="input" id="kt" value="' + esc(k ? k.tingkat : '') + '" placeholder="X"></div><div class="field"><label>Peminatan</label><input class="input" id="kp" value="' + esc(k ? k.peminatan : '') + '" placeholder="TKL"></div></div><div class=\"field\"><label>Wali kelas</label><select class=\"select\" id=\"kw\"><option value=\"\">— Belum ditentukan —</option>' + M().guru.map(g => '<option value=\"' + esc(g.id) + '\"' + (k && k.wali === g.id ? ' selected' : '') + '>' + esc(g.nama) + '</option>').join('') + '</select><span class=\"hint\">' + (M().guru.length ? 'Hanya akun guru yang dapat dipilih.' : 'Belum ada akun guru. Tambahkan di Manajemen Pengguna.') + '</span></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="ksv">Simpan</button>' });
     h.$('#ksv').onclick = async () => { try { const j = await A.call('kelas.save', { id_kelas: k ? k.id_kelas : '', nama_kelas: h.$('#kn').value, tingkat: h.$('#kt').value, peminatan: h.$('#kp').value, wali: h.$('#kw').value }); h.close(); kmRedraw(j); U.toast('Kelas tersimpan.', 'ok'); } catch (e) { U.err(e); } };
   };
   act.a_kdel = async el => { if (!(await U.confirm('Hapus kelas ini?', { danger: true, ok: 'Hapus' }))) return; kmRedraw(await A.call('kelas.delete', { id_kelas: el.dataset.id })); U.toast('Kelas dihapus.', 'ok'); };
@@ -205,8 +211,10 @@
   };
   act.a_rform = el => {
     const r = el.dataset.id ? M().ruang.filter(x => x.id_ruang === el.dataset.id)[0] : null;
-    const h = U.modal({ title: r ? 'Ubah ruang' : 'Tambah ruang', body: '<div class="col g16"><div class="field"><label>Nama ruang</label><input class="input" id="rn" value="' + esc(r ? r.nama_ruang : '') + '" placeholder="mis. Ruang 12A / Lab Biologi"></div><div class="field"><label>Keterangan (opsional)</label><input class="input" id="rk" value="' + esc(r ? r.keterangan || '' : '') + '" placeholder="mis. Kapasitas 36 kursi"></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="rsv">Simpan</button>' });
-    h.$('#rsv').onclick = async () => { try { const j = await A.call('ruang.save', { id_ruang: r ? r.id_ruang : '', nama_ruang: h.$('#rn').value, keterangan: h.$('#rk').value }); h.close(); kmRedraw(j); U.toast('Ruang tersimpan.', 'ok'); } catch (e) { U.err(e); } };
+    const guruRuang = r && r.guru ? String(r.guru).split(',').filter(Boolean) : [];
+    const guruField = '<div class="field"><label>Guru ruang <span class="muted">(maks. 2)</span></label><div class="sel-list" id="rgu" style="max-height:160px">' + ((D.peek('users') || []).filter(u => u.peran === 'guru').map(u => '<label><input type="checkbox" class="chk" value="' + esc(u.id) + '"' + (guruRuang.indexOf(u.id) > -1 ? ' checked' : '') + '>' + esc(u.nama) + '</label>').join('') || '<p class="sm muted" style="padding:10px 12px">Belum ada akun guru.</p>') + '</div></div>';
+    const h = U.modal({ title: r ? 'Ubah ruang' : 'Tambah ruang', body: '<div class="col g16"><div class="field"><label>Nama ruang</label><input class="input" id="rn" value="' + esc(r ? r.nama_ruang : '') + '" placeholder="mis. Ruang 12A / Lab Biologi"></div><div class="field"><label>Keterangan (opsional)</label><input class="input" id="rk" value="' + esc(r ? r.keterangan || '' : '') + '" placeholder="mis. Kapasitas 36 kursi"></div>' + guruField + '</div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" id="rsv">Simpan</button>' });
+    h.$('#rsv').onclick = async () => { try { const j = await A.call('ruang.save', { id_ruang: r ? r.id_ruang : '', nama_ruang: h.$('#rn').value, keterangan: h.$('#rk').value, guru: U.$$('#rgu input:checked', h.el).map(i => i.value) }); h.close(); kmRedraw(j); U.toast('Ruang tersimpan.', 'ok'); } catch (e) { U.err(e); } };
   };
   act.a_rdel = async el => { if (!(await U.confirm('Hapus ruang ini?', { danger: true, ok: 'Hapus' }))) return; kmRedraw(await A.call('ruang.delete', { id_ruang: el.dataset.id })); U.toast('Ruang dihapus.', 'ok'); };
   act.a_mdel = async el => { if (!(await U.confirm('Hapus mata pelajaran ini?', { danger: true, ok: 'Hapus' }))) return; kmRedraw(await A.call('mapel.delete', { id_mapel: el.dataset.id })); U.toast('Mapel dihapus.', 'ok'); };
