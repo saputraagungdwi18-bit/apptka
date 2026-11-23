@@ -135,7 +135,7 @@
     U.toast(j.jumlah + ' pengguna diunduh.', 'ok');
   };
   // ---- Laporan daftar pengguna: tabel gaya laporan (dapat dicetak / disimpan sebagai PDF) ----
-  const REP_CSS = '.rep-t{font-size:26px;font-weight:800;color:#0b1220;margin:0;letter-spacing:-.01em}.rep-s{color:#6b7280;font-size:13px;line-height:21px;margin-top:6px}.rep table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}.rep th{background:#4f46e5;color:#fff;font-weight:700;text-align:left;padding:8px 10px;white-space:nowrap}.rep td{padding:7px 10px;color:#1f2937;border-bottom:0}.rep tbody tr:nth-child(odd){background:#f5f6ff}.rep td.r{text-align:right}';
+  const REP_CSS = '.rep{font-family:Georgia,"Times New Roman",serif;color:#1f2937}.rep-t{font-size:24px;font-weight:700;color:#003366;margin:0}.rep-s{color:#4b5563;font-size:13px;line-height:20px;margin-top:6px}.rep table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}.rep th{background:#003366;color:#fff;font-weight:700;text-align:center;padding:8px 10px;border:1px solid #c9ced6}.rep td{padding:6px 10px;text-align:center;color:#333;border:1px solid #c9ced6}.rep tbody tr:nth-child(odd){background:#f2f2f2}.rep tbody tr:nth-child(even){background:#fff}';
   function laporanTabel(list) {
     return '<table><thead><tr><th>No</th><th>Nama</th><th>Peran</th><th>Kelas</th><th>Mapel</th><th>Ruang</th><th>Password</th><th>Status</th></tr></thead><tbody>' +
       list.map((u, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(u.nama) + '</td><td>' + esc(PRN[u.peran] ? PRN[u.peran][0] : u.peran) + '</td><td>' + esc(u.peran === 'siswa' ? (u.kelas || '-') : '—') + '</td><td>' + esc(u.peran === 'guru' ? (String(u.id_mapel || '').split(',').filter(Boolean).map(mapelNm).join(', ') || 'Semua mapel') : '—') + '</td><td>' + esc(u.peran === 'siswa' ? (u.ruang || '—') : '—') + '</td><td>______________</td><td>' + esc(u.status) + '</td></tr>').join('') +
@@ -154,7 +154,7 @@
       '<div class="rep"><style>' + REP_CSS + '</style><div class="rep-t">Daftar Pengguna — ' + esc(S.setting.nama_sekolah || '') + '</div><div class="rep-s">' + laporanRingkas(list) + '</div>' + laporanTabel(list) + '</div>',
       footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn" id="lapcetak">' + I('print') + 'Cetak / simpan PDF</button>' });
     h.$('#lapcetak').onclick = () => {
-      const html = '<html><head><meta charset="utf-8"><title>Laporan daftar pengguna</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,Helvetica,sans-serif}' + REP_CSS + '</style></head><body><div class="rep"><div class="rep-t">Daftar Pengguna — ' + esc(S.setting.nama_sekolah || '') + '</div><div class="rep-s">' + laporanRingkas(list) + '</div>' + laporanTabel(list) + '</div></body></html>';
+      const html = '<html><head><meta charset="utf-8"><title>Laporan daftar pengguna</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Georgia,serif}' + REP_CSS + '</style></head><body><div class="rep"><div class="rep-t">Daftar Pengguna — ' + esc(S.setting.nama_sekolah || '') + '</div><div class="rep-s">' + laporanRingkas(list) + '</div>' + laporanTabel(list) + '</div></body></html>';
       cetakWindow(html);
     };
   };
