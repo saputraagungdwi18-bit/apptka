@@ -2,7 +2,7 @@
 (function () {
   const TKA = window.TKA, U = TKA.ui, A = TKA.api, D = TKA.D, S = TKA.S, esc = U.esc, I = U.i, $ = U.$, act = TKA.actions, inp = TKA.inputs;
   const ST = ['guru', 'admin'];
-  const M = () => ({ mapel: (S.boot && S.boot.mapel) || [], kelas: (S.boot && S.boot.kelas) || [] });
+  const M = () => ({ mapel: (S.boot && S.boot.mapel) || [], kelas: (S.boot && S.boot.kelas) || [], ruang: (S.boot && S.boot.ruang) || [], guru: (S.boot && S.boot.guru) || [] });
   const mapelNm = id => { const m = M().mapel.filter(x => x.id_mapel === id)[0]; return m ? m.nama_mapel : id === 'CAMPUR' ? 'Campuran' : '-'; };
   const mapelOpt = () => M().mapel.map(m => [m.id_mapel, m.nama_mapel]);
   const isAdmin = () => S.user && S.user.peran === 'admin';
@@ -454,7 +454,7 @@
   };
   function tokenBaru() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
   function jForm(j) {
-    const paket = (D.peek('paket') || []).filter(p => p.status === 'Terpublikasi' && p.jenis === 'Resmi'), kl = kelasUntukUser(), rg = M().ruang, now = Date.now(), jRuangAwal = !!(j && (j.ruang || []).length);
+    const paket = (D.peek('paket') || []).filter(p => p.status === 'Terpublikasi' && p.jenis === 'Resmi'), kl = kelasUntukUser(), rg = M().ruang || [], now = Date.now(), jRuangAwal = !!(j && (j.ruang || []).length);
     if (!paket.length && !j) return U.modal({ title: 'Belum ada paket resmi', body: '<p>Buat paket berjenis <b>Ujian resmi</b> dan publikasikan terlebih dahulu.</p>', footer: '<a class="btn" href="#/paket-ujian/baru" data-a="m_close">Buat paket</a>' });
     const start = j ? j.mulai : Math.ceil((now + 1800e3) / 900e3) * 900e3;
     const h = U.modal({ title: j ? 'Ubah jadwal' : 'Buat jadwal ujian', cls: 'wide', body: '<div class="col g16"><div class="field"><label>Paket ujian</label><select class="select" id="jpk">' + U.opt(paket.map(p => [p.id_paket, p.nama + ' (' + p.jumlah_soal + ' soal, ' + p.durasi + ' mnt)']), j ? j.id_paket : '', 'Pilih paket') + '</select></div>' +
