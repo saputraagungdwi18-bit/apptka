@@ -63,7 +63,15 @@
       const body = pg.length ? '<div class="tw"><table><thead><tr><th style="width:36px"><input type="checkbox" class="chk" data-a="g_sall"></th><th>Pertanyaan</th><th class="hm">Mapel / topik</th><th class="hm">Kesulitan</th><th>Status</th><th></th></tr></thead><tbody>' +
         pg.map(s => '<tr><td><input type="checkbox" class="chk" data-a="g_ssel" data-id="' + s.id_soal + '"' + (SF.sel.has(s.id_soal) ? ' checked' : '') + '></td><td style="max-width:420px"><a href="#/soal/' + s.id_soal + '" class="b" style="color:var(--ink)">' + esc(s.ringkas) + '</a></td><td class="sm hm">' + esc(mapelNm(s.id_mapel)) + '<div class="xs muted">' + esc(s.topik) + '</div></td><td class="hm">' + U.kes(s.kesulitan) + '</td><td>' + U.badge(s.status, s.status === 'Aktif' ? 'ok' : 'neu') + '</td><td class="tr"><span class="acts"><a class="ibtn" href="#/soal/' + s.id_soal + '" title="Ubah">' + I('edit') + '</a><button class="ibtn dng" data-a="g_sdel" data-id="' + s.id_soal + '" title="Hapus">' + I('delete') + '</button></span></td></tr>').join('') + '</tbody></table></div>' + U.pager(f.length, SF.page, per, 'g_sp')
         : U.empty('quiz', list.length ? 'Tidak ada soal yang cocok' : 'Bank soal masih kosong', list.length ? 'Ubah filter pencarian.' : 'Mulai dengan menambah soal atau mengimpor dari CSV/Excel.', '<a class="btn mt16" href="#/soal/baru">Tambah soal</a>');
-      const grid = $('#sbody'); if (grid) grid.innerHTML = body;
+      const totF = f.reduce((a, x) => a + Number(x.poin || 1), 0);
+      const totA = f.filter(x => x.status === 'Aktif').reduce((a, x) => a + Number(x.poin || 1), 0);
+      const sesuaiFilter = list.length !== f.length;
+      const sumHtml = '<div class="row wrap g8" id="spoin" style="padding:12px 16px;border-bottom:1px solid var(--line);align-items:center">' +
+        '<span class="sm muted">Jumlah soal</span>' + U.badge(String(f.length), 'neu') +
+        '<span class="sm muted">Total poin</span>' + U.badge(String(totF), 'info') +
+        '<span class="sm muted">Poin soal aktif</span>' + U.badge(String(totA), 'ok') +
+        (sesuaiFilter ? '<span class="xs muted">sesuai filter</span>' : '') + '</div>';
+      const grid = $('#sbody'); if (grid) grid.innerHTML = sumHtml + body;
       const bar = $('#sbulk'); if (bar) { bar.classList.toggle('hide', !SF.sel.size); bar.querySelector('b').textContent = SF.sel.size; }
     };
     c.root.innerHTML = U.pageHead('Bank soal', 'Kelola soal pilihan ganda per mata pelajaran.', '<button class="btn sec" data-a="g_simp">' + I('upload_file') + 'Import</button><a class="btn" href="#/soal/baru">' + I('add') + 'Tambah soal</a>') + tabs('soal') +

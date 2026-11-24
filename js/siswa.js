@@ -42,16 +42,57 @@
       const b = B(), p = b.profil || S.user, jd = b.jadwal || [], rs = b.ringkasan || {}, now = A.now();
       const nxt = jd.filter(j => ['nanti', 'buka', 'lanjut'].indexOf(jstat(j)) > -1).sort((x, y) => x.mulai - y.mulai)[0];
       const aktif = jd.filter(j => jstat(j) === 'lanjut')[0], latAktif = (b.latihan || []).filter(l => l.sesi)[0];
-      const lanj = aktif ? '<button class="btn" data-a="s_resume" data-jid="' + aktif.id_jadwal + '" data-pid="' + aktif.id_paket + '">' + I('play_arrow') + 'Lanjutkan</button>' : latAktif ? '<button class="btn" data-a="s_resume" data-pid="' + latAktif.id_paket + '">' + I('play_arrow') + 'Lanjutkan</button>' : '';
-      c.root.innerHTML = U.pageHead('Halo, ' + esc(String(p.nama || '').split(' ')[0]) + ' 👋', (p.kelas ? p.kelas + ' · ' : '') + 'Semoga sukses dalam simulasi hari ini.') +
-        ((aktif || latAktif) ? '<div class="alert warn mb16">' + I('timer') + '<div class="grow"><b>Ada ujian yang belum dikumpulkan:</b> ' + esc((aktif || latAktif).nama) + '. Lanjutkan sebelum waktu habis.</div>' + lanj + '</div>' : '') +
-        '<div class="grid g3 mb16 statrow">' + U.stat('task_alt', rs.selesai || 0, 'Ujian selesai') + U.stat('trending_up', rs.rata || 0, 'Rata-rata skor (skala 100)', 'ok') +
-        U.stat('event', nxt ? (jstat(nxt) === 'buka' || jstat(nxt) === 'lanjut' ? 'Sekarang' : U.jam(nxt.mulai)) : '—', nxt ? (jstat(nxt) === 'buka' ? 'Dibuka: ' : 'Berikutnya: ') + esc(nxt.nama) + ' · ' + (U.sama(nxt.mulai, now) ? 'hari ini' : U.tgl(nxt.mulai)) : 'Tidak ada ujian terjadwal', 'warn') + '</div>' +
-        '<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:start" id="bgrid"><div class="col g16"><div class="row sp"><h3>Ujian terjadwal</h3><a href="#/paket" class="sm b">Semua paket →</a></div>' +
-        (jd.length ? jd.slice(0, 4).map(jcard).join('') : '<div class="card">' + U.empty('event_available', 'Belum ada ujian terjadwal', 'Pengawas akan menjadwalkan simulasi untuk kelas Anda.') + '</div>') +
-        ((b.latihan || []).length ? '<h3 class="mt8">Latihan mandiri</h3><div class="grid g2">' + b.latihan.slice(0, 2).map(lcard).join('') + '</div>' : '') + '</div>' +
-        '<div class="col g16"><div class="card"><h4 class="mb8">Diagnostik topik</h4>' + ((b.diag || []).length ? '<div class="bars">' + b.diag.slice(0, 5).map(d => '<div class="br"><span class="sm">' + esc(d.topik) + '</span>' + U.bar(d.pct) + '<b class="sm tr">' + d.pct + '%</b></div>').join('') + '</div><p class="xs muted mt8">Urut dari yang paling perlu dilatih.</p>' : '<p class="sm muted">Selesaikan satu ujian untuk melihat topik yang perlu diperkuat.</p>') + '</div></div></div>';
-      if (window.innerWidth < 900) $('#bgrid').style.gridTemplateColumns = '1fr';
+      // Kartu utama: ujian yang sedang dikerjakan, lalu latihan belum selesai, lalu ujian berikutnya
+      let hero;
+      if (aktif) hero = { warn: true, kick: 'Sedang dikerjakan', nama: aktif.nama, meta: aktif.mapel + ' · ' + aktif.jumlah_soal + ' soal · batas ' + U.jam(aktif.selesai), btn: jbtn(aktif) };
+      else if (latAktif) hero = { warn: true, kick: 'Latihan belum selesai', nama: latAktif.nama, meta: latAktif.mapel + ' · ' + latAktif.jumlah_soal + ' soal', btn: '<button class="btn" data-a="s_resume" data-pid="' + latAktif.id_paket + '">' + I('play_arrow') + 'Lanjutkan</button>' };
+      else if (nxt) hero = { warn: false, kick: jstat(nxt) === 'buka' ? 'Sedang berlangsung' : 'Ujian berikutnya', nama: nxt.nama, meta: nxt.mapel + ' · ' + nxt.jumlah_soal + ' soal · ' + nxt.durasi + ' menit', when: (U.sama(nxt.mulai, now) ? 'Hari ini · ' : U.hari(nxt.mulai) + ', ' + U.tgl(nxt.mulai) + ' · ') + U.jam(nxt.mulai), btn: jbtn(nxt) };
+      else hero = { warn: false, kick: 'Belum ada ujian', nama: 'Menunggu jadwal', meta: 'Pengawas akan menjadwalkan simulasi untuk kelas Anda.', btn: '' };
+
+      const heroHtml = '<section class="sh-hero sh-in' + (hero.warn ? ' warn' : '') + '"><div class="sh-kick">' + esc(hero.kick) + '</div>' +
+        '<div class="sh-hero-t">' + esc(hero.nama) + '</div><div class="sh-hero-m">' + esc(hero.meta) + '</div>' +
+        (hero.when ? '<div class="sh-hero-w">' + I('schedule', 'sm') + ' ' + esc(hero.when) + '</div>' : '') +
+        (hero.btn ? '<div class="sh-hero-b">' + hero.btn + '</div>' : '') + '</section>';
+
+      const menu = '<nav class="sh-menu sh-in" style="animation-delay:.08s">' + [
+        ['#/paket', 'assignment', 'Daftar Paket', '#e0f7f4', '#0f766e'],
+        ['#/riwayat', 'history', 'Riwayat', '#fef3c7', '#b45309'],
+        ['#/paket', 'menu_book', 'Latihan', '#dbeafe', '#1d4ed8'],
+        ['#/bantuan', 'help', 'Bantuan', '#fce7f3', '#be185d']
+      ].map(m => '<a class="sh-tile" href="' + m[0] + '" style="--bg:' + m[3] + ';--fg:' + m[4] + '"><span class="sh-ico">' + I(m[1]) + '</span>' + m[2] + '</a>').join('') + '</nav>';
+
+      const stats = '<div class="sh-stats sh-in" style="animation-delay:.12s">' +
+        '<div class="sh-stat"><span>Selesai</span><b>' + (rs.selesai || 0) + '</b></div>' +
+        '<div class="sh-stat"><span>Terjadwal</span><b>' + jd.length + '</b></div>' +
+        '<div class="sh-stat"><span>Berikutnya</span><b>' + (nxt ? U.jam(nxt.mulai) : '—') + '</b></div></div>';
+
+      const kartuJadwal = j => {
+        const st = jstat(j), bd = JB[st];
+        const kapan = st === 'buka' || st === 'lanjut' ? 'Batas ' + U.jam(j.selesai) : U.tgl(j.mulai) + ' · ' + U.jam(j.mulai);
+        return '<div class="sh-card"><div class="row sp">' + U.badge(bd[0], bd[1]) + '</div><h4 class="sh-ct">' + esc(j.nama) + '</h4>' +
+          '<div class="sm muted">' + esc(j.mapel) + ' · ' + j.jumlah_soal + ' soal · ' + j.durasi + ' menit</div>' +
+          '<div class="sm muted">' + I('schedule', 'sm') + ' ' + kapan + '</div><div class="sh-cb">' + jbtn(j) + '</div></div>';
+      };
+      const kartuLatihan = p => {
+        const btn = p.sesi ? '<button class="btn" data-a="s_resume" data-pid="' + p.id_paket + '">' + I('play_arrow') + 'Lanjutkan</button>' : '<button class="btn" data-a="s_start" data-pid="' + p.id_paket + '">' + I('play_arrow') + 'Mulai</button>';
+        return '<div class="sh-card"><div class="row sp">' + (p.sesi ? U.badge('Sedang dikerjakan', 'warn') : p.skor_terakhir != null ? U.badge('Terakhir ' + Math.round(p.skor_terakhir), 'info') : U.badge('Baru', 'neu')) + '</div>' +
+          '<h4 class="sh-ct">' + esc(p.nama) + '</h4><div class="sm muted">' + esc(p.mapel) + ' · ' + p.jumlah_soal + ' soal · ' + p.durasi + ' menit</div><div class="sh-cb">' + btn + '</div></div>';
+      };
+
+      const body = '<div class="sh-h sh-in"><h3>Ujian terjadwal</h3><a href="#/paket">Semua</a></div>' +
+        (jd.length ? '<div class="sh-scroll">' + jd.slice(0, 6).map(kartuJadwal).join('') + '</div>'
+          : '<div class="card">' + U.empty('event_available', 'Belum ada ujian terjadwal', 'Pengawas akan menjadwalkan simulasi untuk kelas Anda.') + '</div>') +
+        ((b.latihan || []).length ? '<div class="sh-h"><h3>Latihan mandiri</h3><a href="#/paket">Semua</a></div><div class="sh-scroll">' + b.latihan.slice(0, 6).map(kartuLatihan).join('') + '</div>' : '') +
+        '<div class="sh-h"><h3>Diagnostik topik</h3></div>' +
+        '<div class="sh-card sh-diag">' + ((b.diag || []).length
+          ? b.diag.slice(0, 5).map(d => '<div class="sh-bar"><span>' + esc(d.topik) + '</span>' + U.bar(d.pct) + '<b>' + Math.round(d.pct) + '%</b></div>').join('')
+          : U.empty('insights', 'Belum ada data', 'Selesaikan ujian untuk melihat topik yang perlu diperkuat.')) + '</div>';
+
+      c.root.innerHTML = '<div class="sh">' +
+        '<header class="sh-top sh-in"><div><div class="sh-hi">Halo, ' + esc(String(p.nama || '').split(' ')[0]) + ' 👋</div>' +
+        '<div class="sh-sub">' + esc((p.kelas ? p.kelas + ' · ' : '') + ((S.setting && S.setting.tahun_ajaran) || '')) + '</div></div>' +
+        '<span class="sh-pill" title="Rata-rata skor (skala 100)">★ ' + (rs.rata || 0) + '</span></header>' +
+        heroHtml + menu + stats + body + '</div>';
     };
     draw();
     const t = setInterval(() => { if (!document.hidden && !document.querySelector('.exam')) draw(); }, 30000);
