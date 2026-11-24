@@ -417,6 +417,32 @@
 
   // ============================================================ JADWAL UJIAN
   let jView = 'daftar', jMonth = new Date();
+  // ---- Jadwal Pengawasan: jadwal ujian yang diawasi guru ini (dibuat admin) ----
+  const tglPanjang = ms => new Date(ms).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  TKA.route('guru', 'pengawasan', function (c) {
+    c.live();
+    let list = null;
+    const draw = () => {
+      const now = A.now(), saya = S.user.id;
+      if (list === null) { c.root.innerHTML = U.pageHead('Jadwal Pengawasan', 'Hari, tanggal, ruang, dan waktu ujian yang Anda awasi.') + '<div class="card">' + U.empty('hourglass_empty', 'Memuat jadwal…', '') + '</div>'; return; }
+      const rows = list.filter(j => (j.pengawas || []).indexOf(saya) > -1).sort((a, b) => a.mulai - b.mulai);
+      const ruangTxt = j => (j.ruang_nama && j.ruang_nama.length) ? j.ruang_nama.join(', ') : ((j.kelas_nama || []).join(', ') || '—');
+      const body = rows.length
+        ? '<div class="tw"><table><thead><tr><th>No</th><th>Hari, tanggal</th><th>Ruang</th><th>Waktu ujian</th><th>Status</th></tr></thead><tbody>' +
+          rows.map((j, i) => {
+            const st = now < j.mulai ? ['Terjadwal', 'info'] : now <= j.selesai ? ['Berlangsung', 'ok'] : ['Selesai', 'neu'];
+            return '<tr><td>' + (i + 1) + '</td><td><b>' + esc(tglPanjang(j.mulai)) + '</b><div class="xs muted">' + esc(j.paket) + ' · ' + esc(j.kode) + '</div></td>' +
+              '<td>' + esc(ruangTxt(j)) + '</td><td class="mono">' + U.jam(j.mulai) + ' – ' + U.jam(j.selesai) + '</td><td>' + U.badge(st[0], st[1]) + '</td></tr>';
+          }).join('') + '</tbody></table></div>'
+        : U.empty('event_available', 'Belum ada jadwal pengawasan', 'Jadwal akan muncul di sini setelah admin membuat jadwal ujian dan Anda ditetapkan sebagai pengawas.');
+      c.root.innerHTML = U.pageHead('Jadwal Pengawasan', 'Hari, tanggal, ruang, dan waktu ujian yang Anda awasi.') + '<div class="card pad0">' + body + '</div>';
+    };
+    draw();
+    D.swr('jadwal', v => { list = v; draw(); }).catch(U.err);
+    const t = setInterval(() => { if (!document.hidden) D.swr('jadwal', v => { list = v; draw(); }, 60000).catch(() => {}); }, 60000);
+    return () => clearInterval(t);
+  });
+
   TKA.route(ST, 'jadwal', function (c) {
     c.live();
     let list = [];
@@ -433,10 +459,10 @@
       c.root.innerHTML = U.pageHead('Jadwal ujian', 'Atur kapan dan untuk kelas mana ujian dibuka.', '<div class="seg" style="width:200px"><button class="' + (jView === 'daftar' ? 'on' : '') + '" data-a="g_jv" data-v="daftar">Daftar</button><button class="' + (jView === 'kalender' ? 'on' : '') + '" data-a="g_jv" data-v="kalender">Kalender</button></div><button class="btn" data-a="g_jnew">' + I('add') + 'Buat jadwal</button>') + body;
     };
     c.root.innerHTML = U.skel(3, 70);
-    TKA._jd = draw; TKA._jl = () => list;
+    TKA._jd = draw; TKA._jl = () => list; TKA._jset = v => { list = v; draw(); };
     Promise.all([D.swr('jadwal', v => { list = v; draw(); }), D.swr('paket', () => {})]).then(() => { if (c.q.get('baru')) { history.replaceState(null, '', '#/jadwal'); jForm(null); } }).catch(U.err);
     const t = setInterval(() => { if (!document.hidden && TKA._jd) draw(); }, 30000);
-    return () => { clearInterval(t); TKA._jd = null; };
+    return () => { clearInterval(t); TKA._jd = null; TKA._jset = null; };
   });
   act.g_jv = el => { jView = el.dataset.v; if (TKA._jd) TKA._jd(); };
   act.g_jm = el => { jMonth = new Date(jMonth.getFullYear(), jMonth.getMonth() + Number(el.dataset.d), 1); if (TKA._jd) TKA._jd(); };
@@ -500,7 +526,7 @@
     const body = { id_paket: $('#jpk').value, mode: (TKA._jh && TKA._jh.el.querySelector('input[name=jmode]:checked') || { value: 'kelas' }).value, kelas: U.$$('#jkl input:checked').map(i => i.value), ruang: U.$$('#jrg input:checked').map(i => i.value), mulai: U.fromInput($('#jmu').value), selesai: U.fromInput($('#jse').value), token: $('#jtk').value };
     if (h.el.querySelector('#jpgw')) body.pengawas = U.$$('#jpgw input:checked', h.el).map(i => i.value); if (h.jid) body.id_jadwal = h.jid;
     el.disabled = true;
-    try { const r = await A.call('jadwal.save', body); h.close(); D.invalidate('jadwal'); await D.fetch('jadwal'); U.toast('Jadwal tersimpan. Token: ' + (r.token || body.token), 'ok', 5000); if (TKA._jd) TKA._jd(); } catch (e) { el.disabled = false; U.err(e); }
+    try { const r = await A.call('jadwal.save', body); h.close(); D.invalidate('jadwal'); const fresh = await D.fetch('jadwal'); U.toast('Jadwal tersimpan. Token: ' + (r.token || body.token), 'ok', 5000); if (TKA._jset) TKA._jset(fresh); else if (TKA._jd) TKA._jd(); } catch (e) { el.disabled = false; U.err(e); }
   };
 
   // ============================================================ MONITORING LIVE
