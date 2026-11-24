@@ -11,8 +11,9 @@
   // ============================================================ DASHBOARD ADMIN
   TKA.route('admin', 'dashboard', function (c) {
     c.live();
-    let logs = [];
+    let logs = [], alive = true; // alive = false setelah pindah halaman, agar panggilan yang tertunda tidak menimpa halaman baru
     const draw = () => {
+      if (!alive) return;
       const b = S.boot || {}, h = b.hitung || {}, u = b.ujian || {}, sy = b.sistem || {};
       c.root.innerHTML = U.pageHead('Dashboard administrator', 'Ringkasan sekolah, ujian berlangsung, dan kesehatan sistem.', '<button class="btn sec" data-a="a_nu" data-p="siswa">' + I('person_add') + 'Siswa</button><button class="btn sec" data-a="a_nu" data-p="guru">' + I('person_add') + 'Guru</button><a class="btn" href="#/jadwal?baru=1">' + I('event') + 'Sesi ujian baru</a>') +
         '<div class="grid gs4 mb16 statrow">' + U.stat('groups', U.rb(h.siswa || 0), 'Total siswa') + U.stat('badge', h.guru || 0, 'Guru / pengawas') + U.stat('school', h.kelas || 0, 'Kelas · ' + (h.mapel || 0) + ' mapel') + U.stat('lock', h.terkunci_akun || 0, 'Akun terkunci', h.terkunci_akun ? 'bad' : '') + '</div>' +
@@ -22,10 +23,10 @@
         '<div class="card pad0"><div class="card-h"><h4>Aktivitas terbaru</h4><a class="sm b" href="#/pengaturan?t=audit">Log audit →</a></div><ul class="feed" style="padding:0 20px">' + (logs.length ? logs.map(l => '<li><b>' + esc(l.user) + '</b> <span class="muted">· ' + esc(l.aksi) + '</span><span class="xs muted" style="float:right">' + U.rel(l.ts) + '</span></li>').join('') : '<li class="muted">Belum ada aktivitas.</li>') + '</ul></div>';
     };
     draw();
-    const load = () => A.call('audit.list', { limit: 8 }, { read: true }).then(j => { logs = j.log; draw(); }).catch(() => {});
+    const load = () => A.call('audit.list', { limit: 8 }, { read: true }).then(j => { if (alive) { logs = j.log; draw(); } }).catch(() => {});
     load();
     const t = setInterval(() => { if (!document.hidden) { TKA.refreshBoot().then(draw).catch(() => {}); load(); } }, 20000);
-    return () => clearInterval(t);
+    return () => { alive = false; clearInterval(t); };
   });
   act.a_nu = el => userForm(null, el.dataset.p);
 
