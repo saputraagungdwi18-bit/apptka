@@ -33,21 +33,65 @@
   }
 
   // ============================================================ DASHBOARD GURU
+  // ---- Dashboard guru: Jadwal pengawasan (ruang, tanggal, waktu, mapel, daftar hadir) ----
+  const TGL_PANJANG = ms => new Date(ms).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  async function pengawasanHtml() {
+    const jdOn = !(S.setting && S.setting.menu_jadwal_guru === '0');
+    const now = A.now(), saya = S.user.id, awal = new Date(now); awal.setHours(0, 0, 0, 0);
+    const list = ((S.boot && S.boot.jadwal) || []).filter(j => (j.pengawas || []).indexOf(saya) > -1 && j.selesai >= awal.getTime())
+      .sort((a, b) => a.mulai - b.mulai).slice(0, 6);
+    if (!list.length) return '<div class="card mt16">' + U.empty('event_seat', 'Belum ada jadwal pengawasan', 'Jadwal ujian yang Anda awasi akan tampil di sini.') + '</div>';
+    const hadir = {};
+    await Promise.all(list.map(j => A.call('kehadiran.list', { id_jadwal: j.id_jadwal }).then(r => { hadir[j.id_jadwal] = r.siswa || []; }).catch(() => { hadir[j.id_jadwal] = null; })));
+    const WARNA = { 'Hadir': ['#dcfce7', '#166534'], 'Sakit': ['#dbeafe', '#1d4ed8'], 'Terlambat': ['#fef3c7', '#b45309'], 'Tidak hadir': ['#fee2e2', '#b91c1c'] };
+    const chip = (x, n) => { const w = WARNA[x] || ['#e2e8f0', '#334155']; return '<span class="dp-chip" style="background:' + w[0] + ';color:' + w[1] + '">' + x + ' <b>' + n + '</b></span>'; };
+    const ringkas = id => {
+      const d = hadir[id];
+      if (d === null) return '<span class="xs muted">Daftar hadir belum dapat dimuat.</span>';
+      const hit = { 'Hadir': 0, 'Sakit': 0, 'Terlambat': 0, 'Tidak hadir': 0 }; let belum = 0;
+      d.forEach(s => { if (s.status && hit[s.status] !== undefined) hit[s.status]++; else belum++; });
+      return Object.keys(hit).map(x => chip(x, hit[x])).join('') + chip('Belum diisi', belum);
+    };
+    const hariIni = list.filter(j => j.mulai < awal.getTime() + 86400000 && j.selesai >= awal.getTime()).length;
+    const kartu = list.map(j => {
+      const ruang = (j.ruang_nama && j.ruang_nama.length) ? j.ruang_nama.join(', ') : ((j.kelas_nama || []).length ? 'Kelas ' + j.kelas_nama.join(', ') : '—');
+      return '<div class="sh-card dp-jc"><div class="dp-ruang">' + esc(ruang) + '</div>' +
+        '<div class="sh-ct">' + esc(TGL_PANJANG(j.mulai)) + '</div>' +
+        '<div class="sm muted">' + I('schedule', 'sm') + ' ' + U.jam(j.mulai) + ' – ' + U.jam(j.selesai) + '</div>' +
+        '<div class="sm"><b>' + esc(j.mapel) + '</b> · ' + esc(j.paket) + '</div>' +
+        '<div class="dp-hadir">' + ringkas(j.id_jadwal) + '</div>' +
+        '<div class="sh-cb"><button class="btn" data-a="g_khadir" data-id="' + esc(j.id_jadwal) + '">' + I('how_to_reg') + 'Daftar hadir</button></div></div>';
+    }).join('');
+    // Token berjalan untuk jadwal terdekat (berganti otomatis setiap 15 menit)
+    let tok = null;
+    if (list.length) { try { tok = await A.call('pengawasan.token', { id_jadwal: list[0].id_jadwal }, { read: true }); } catch (e) { tok = { error: (e && e.message) || 'Gagal memuat token.' }; } }
+    const mmss = ms => { const d = Math.ceil(ms / 1000); return Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0'); };
+    const kartuHtml = '<div class="dp-card"><div class="dp-top"><div><div class="dp-k">Jadwal pengawasan</div>' +
+      '<div class="dp-big">' + list.length + ' JADWAL</div><div class="dp-sm">' + hariIni + ' jadwal hari ini</div></div>' + (tok && tok.token ? '<div class="dp-tok"><div class="dp-tk-l">Token</div><div class="dp-tk">' + esc(tok.token) + '</div><div class="dp-tk-s">Berganti dalam ' + mmss(tok.sisa) + '</div></div>' : (tok ? '<div class="dp-tok"><div class="dp-tk-l">Token</div><div class="dp-tk-s" title="' + esc(tok.error || '') + '">Belum dapat dimuat. Periksa backend (Kode.gs) sudah diperbarui.</div></div>' : '')) + '<span class="dp-badge">Pengawas</span></div>' +
+      '<div class="dp-act">' + (jdOn ? '<a href="#/jadwal">' + I('event') + '<span>Jadwal</span></a>' : '') + '<a href="#/monitoring">' + I('monitor_heart') + '<span>Monitoring</span></a>' + (jdOn ? '<a href="#/pengawasan">' + I('supervisor_account') + '<span>Pengawasan</span></a>' : '') + '</div></div>';
+    const daftarHtml = '<div class="sh-h"><h3>Jadwal pengawasan</h3>' + (jdOn ? '<a href="#/pengawasan">Semua</a>' : '') + '</div><div class="sh-scroll dp-scroll">' + kartu + '</div>';
+    return kartuHtml + '<!--pw-list-->' + daftarHtml;
+  }
+
   TKA.route('guru', 'dashboard', function (c) {
     c.live();
+    let pwHtml = '', pwAt = 0;
+    const pwRender = async () => { pwAt = Date.now(); pwHtml = await pengawasanHtml(); const [pk, pd = ''] = pwHtml.split('<!--pw-list-->'); const k = c.root.querySelector('#dpw-kartu'), d = c.root.querySelector('#dpw-daftar'); if (k) k.innerHTML = pk; if (d) d.innerHTML = pd; };
     const draw = () => {
       const b = S.boot || {}, st = b.stats || {}, jd = b.jadwal || [], now = A.now();
-      c.root.innerHTML = U.pageHead('Halo, ' + esc(String(S.user.nama).split(',')[0]), 'Ringkasan bank soal, jadwal, dan hasil ujian.',
-        '<a class="btn sec" href="#/soal/baru">' + I('add') + 'Soal</a><a class="btn sec" href="#/paket-ujian/baru">' + I('add') + 'Paket</a><a class="btn" href="#/jadwal?baru=1">' + I('event') + 'Jadwalkan ujian</a>') +
+      const pwSplit = (pwHtml || '').split('<!--pw-list-->');
+      c.root.innerHTML = U.pageHead('Halo, ' + esc(String(S.user.nama).split(',')[0]), 'Ringkasan bank soal, jadwal, dan hasil ujian.') +
+        '<div id="dpw-kartu">' + pwSplit[0] + '</div>' +
         '<div class="grid gs4 mb16 statrow">' + U.stat('quiz', U.rb(st.soal || 0), 'Total soal' + (st.draft ? ' · ' + st.draft + ' draf' : '')) + U.stat('inventory_2', st.paket || 0, 'Paket terpublikasi') + U.stat('monitor_heart', st.berlangsung || 0, 'Ujian berlangsung', st.berlangsung ? 'ok' : '') + U.stat('analytics', st.rata || 0, 'Rata-rata skor (' + (st.selesai || 0) + ' hasil)', 'warn') + '</div>' +
         '<div class="card pad0"><div class="card-h"><h3>Ujian terdekat</h3><a class="sm b" href="#/jadwal">Semua jadwal →</a></div>' +
         (jd.length ? '<div class="tw"><table><thead><tr><th>Kode</th><th>Paket</th><th class="hm">Kelas</th><th>Waktu</th><th>Token</th><th>Status</th><th></th></tr></thead><tbody>' + jd.map(j => {
           const live = j.mulai <= now && now <= j.selesai;
           return '<tr><td class="mono sm">' + esc(j.kode) + '</td><td><b>' + esc(j.paket) + '</b><div class="xs muted">' + esc(j.mapel) + '</div></td><td class="sm hm">' + esc(j.kelas_nama.join(', ')) + '</td><td class="sm">' + U.tglJam(j.mulai) + '<div class="xs muted">s.d. ' + U.jam(j.selesai) + '</div></td><td><span class="mono b">' + esc(j.token) + '</span></td><td>' + (live ? U.badge('Berlangsung', 'ok') : U.badge('Terjadwal', 'info')) + '</td><td class="tr">' + (live ? '<a class="btn sm" href="#/monitoring?j=' + j.id_jadwal + '">Pantau</a>' : '') + '</td></tr>';
-        }).join('') + '</tbody></table></div>' : U.empty('event_available', 'Belum ada jadwal mendatang', 'Buat jadwal agar siswa dapat mengerjakan simulasi.', '<a class="btn mt16" href="#/jadwal?baru=1">Buat jadwal</a>')) + '</div>';
+        }).join('') + '</tbody></table></div>' : U.empty('event_available', 'Belum ada jadwal mendatang', 'Buat jadwal agar siswa dapat mengerjakan simulasi.', '<a class="btn mt16" href="#/jadwal?baru=1">Buat jadwal</a>')) + '</div>' + '<div id="dpw-daftar">' + (pwSplit[1] || '') + '</div>';
     };
     draw();
-    const t = setInterval(() => { if (!document.hidden) draw(); }, 30000);
+    pwRender();
+    const t = setInterval(() => { if (!document.hidden) { draw(); if (Date.now() - pwAt > 30000) pwRender(); } }, 30000);
     return () => clearInterval(t);
   });
 
@@ -134,6 +178,16 @@
   function kelasUntukUser() {
     const all = M().kelas, ka = String((S.boot && S.boot.profil && S.boot.profil.kelas_ajar) || '').split(',').filter(Boolean);
     return S.user.peran === 'admin' || !ka.length ? all : all.filter(k => ka.indexOf(k.id_kelas) > -1);
+  }
+  // Mata pelajaran paket: guru yang sudah diatur mapelnya oleh admin hanya melihat mapel miliknya (dikunci jika hanya satu).
+  function paketMapelSelect(nilai) {
+    const ms = String((S.boot && S.boot.profil && S.boot.profil.mapel) || '').split(',').filter(Boolean);
+    if (S.user.peran === 'admin' || !ms.length) return '<select class="select" id="pmp">' + U.opt([['CAMPUR', 'Campuran']].concat(mapelOpt()), nilai) + '</select>';
+    const opsi = mapelOpt().filter(m => ms.indexOf(m[0]) > -1);
+    const pilih = opsi.some(m => m[0] === nilai) ? nilai : (opsi[0] ? opsi[0][0] : '');
+    const kunci = opsi.length === 1;
+    return '<select class="select" id="pmp"' + (kunci ? ' disabled' : '') + '>' + U.opt(opsi, pilih) + '</select>' +
+      '<span class="hint">' + (kunci ? 'Mata pelajaran dikunci sesuai pengaturan admin.' : 'Hanya mata pelajaran yang Anda ampu.') + '</span>';
   }
   function mapelBolehOpt() {
     const ms = String((S.boot && S.boot.profil && S.boot.profil.mapel) || '').split(',').filter(Boolean);
@@ -368,7 +422,7 @@
     const sel = P.daftar_soal.filter(i => by[i]), PF = { q: '', mapel: '', kes: '', lim: 60 };
     const topN = () => Array.from(new Set(all.map(s => s.topik)));
     c.root.innerHTML = '<div class="row mb16"><a class="btn ghost sm" href="#/paket-ujian">' + I('arrow_back', 'sm') + 'Paket ujian</a></div>' + U.pageHead(id ? 'Ubah paket' : 'Buat paket', 'Pilih soal aktif dan atur urutannya.') +
-      '<div class="card col g16 mb16"><div class="grid g3"><div class="field" style="grid-column:span 2"><label>Nama paket</label><input class="input" id="pnm" value="' + esc(P.nama) + '" placeholder="mis. Simulasi TKA Matematika 01"></div><div class="field"><label>Mata pelajaran</label><select class="select" id="pmp">' + U.opt([['CAMPUR', 'Campuran']].concat(mapelOpt()), P.id_mapel) + '</select></div></div>' +
+      '<div class="card col g16 mb16"><div class="grid g3"><div class="field" style="grid-column:span 2"><label>Nama paket</label><input class="input" id="pnm" value="' + esc(P.nama) + '" placeholder="mis. Simulasi TKA Matematika 01"></div><div class="field"><label>Mata pelajaran</label>' + paketMapelSelect(P.id_mapel) + '</div></div>' +
       '<div class="grid gs4"><div class="field"><label>Jenis</label><select class="select" id="pjn">' + U.opt([['Latihan', 'Latihan mandiri'], ['Resmi', 'Ujian resmi (dijadwalkan)']], P.jenis) + '</select></div><div class="field"><label>Durasi (menit)</label><input class="input" type="number" id="pdr" min="5" max="300" value="' + P.durasi + '"></div><div class="field"><label>KKM (0–100)</label><input class="input" type="number" id="pkk" min="0" max="100" value="' + P.kkm + '"></div><div class="field"><label>Status</label><select class="select" id="pst">' + U.opt([['Draft', 'Draft'], ['Terpublikasi', 'Terpublikasi']], P.status) + '</select></div></div>' +
       '<div class="field"><label>Deskripsi singkat (opsional)</label><input class="input" id="pds" value="' + esc(P.deskripsi) + '" maxlength="300"></div><div class="row g24 wrap sm"><label class="row g8"><span class="sw"><input type="checkbox" id="pas"' + (P.acak_soal ? ' checked' : '') + '><i></i></span>Acak urutan soal</label><label class="row g8"><span class="sw"><input type="checkbox" id="pao"' + (P.acak_opsi ? ' checked' : '') + '><i></i></span>Acak urutan pilihan</label></div></div>' +
       pengHtml(P.pengaturan) + '<div class="grid g2" style="align-items:start" id="pbg"><div class="card pad0"><div class="card-h"><h4>Pilih soal</h4><span class="sm muted" id="pcnt"></span></div><div class="filters"><div class="grow"><input class="input" placeholder="Cari…" data-i="g_pf" data-k="q" data-ev="input"></div><select class="select" data-i="g_pf" data-k="mapel">' + U.opt(mapelOpt(), '', 'Semua mapel') + '</select><select class="select" data-i="g_pf" data-k="kes">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], '', 'Semua tingkat') + '</select></div><div class="sel-list" id="ppick" style="border:0;border-radius:0"></div></div>' +
@@ -494,7 +548,7 @@
     const h = U.modal({ title: j ? 'Ubah jadwal' : 'Buat jadwal ujian', cls: 'wide', body: '<div class="col g16"><div class="field"><label>Paket ujian</label><select class="select" id="jpk">' + U.opt(paket.map(p => [p.id_paket, p.nama + ' (' + p.jumlah_soal + ' soal, ' + p.durasi + ' mnt)']), j ? j.id_paket : '', 'Pilih paket') + '</select></div>' +
       '<div class="field"><label>Peserta ujian</label>' + (isAdmin() ? '<div class="row g8 mb8"><label class="chip' + (jRuangAwal ? '' : ' on') + '"><input type="radio" name="jmode" hidden value="kelas"' + (jRuangAwal ? '' : ' checked') + '>Per kelas</label><label class="chip' + (jRuangAwal ? ' on' : '') + '"><input type="radio" name="jmode" hidden value="ruang"' + (jRuangAwal ? ' checked' : '') + '>Per ruang</label></div>' : '') +'<div id="jgkelas" class="' + (jRuangAwal ? 'hide' : '') + '"><div class="chips" style="flex-wrap:wrap" id="jkl">' + kl.map(k => { const on = !!(j && (j.kelas || []).indexOf(k.id_kelas) > -1); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(k.id_kelas) + '"' + (on ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>'; }).join('') + '</div></div>' +(isAdmin() ? '<div id="jgruang" class="' + (jRuangAwal ? '' : 'hide') + '"><div class="chips" style="flex-wrap:wrap" id="jrg">' + rg.map(r => { const on = !!(j && (j.ruang || []).indexOf(r.id_ruang) > -1), kosong = !(r.siswa > 0); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(r.id_ruang) + '"' + (on ? ' checked' : '') + (kosong && !on ? ' disabled' : '') + '>' + esc(r.nama_ruang) + ' · ' + (r.siswa || 0) + ' siswa</label>'; }).join('') + '</div><span class="hint">Peserta adalah seluruh siswa di ruang yang dipilih. Ruang tanpa siswa tidak dapat dipilih.</span></div>' : '') + '</div>' +
       '<div class="grid g2"><div class="field"><label>Mulai dibuka</label><input type="datetime-local" class="input" id="jmu" value="' + U.toInput(start) + '"></div><div class="field"><label>Ditutup</label><input type="datetime-local" class="input" id="jse" value="' + U.toInput(j ? j.selesai : start + 3 * 3600e3) + '"></div></div>' +
-      '<div class="grid g2"><div class="field"><label>Token sesi (4–8 karakter)</label><div class="row g8"><input class="input mono b" id="jtk" maxlength="8" value="' + esc(j ? j.token : tokenBaru()) + '" style="text-transform:uppercase"><button class="btn sec" data-a="g_jtk" type="button">' + I('refresh') + '</button></div><span class="hint">Bagikan ke siswa di ruang ujian.</span></div>' + (isAdmin() ? '<div class="field"><label>Pengawas</label><div class="chips" style="flex-wrap:wrap" id="jpgw"></div><span class="hint">Guru ruang otomatis dicentang saat ruang dipilih. Anda dapat mengubahnya.</span></div>' : '') + '</div>' +
+      '<div class="grid g2"><div class="field"><label>Token sesi</label><div class="hint" style="padding-top:10px">Token berganti otomatis setiap 15 menit dan ditampilkan di kartu Jadwal pengawasan.</div></div>' + (isAdmin() ? '<div class="field"><label>Pengawas</label><div class="chips" style="flex-wrap:wrap" id="jpgw"></div><span class="hint">Guru ruang otomatis dicentang saat ruang dipilih. Anda dapat mengubahnya.</span></div>' : '') + '</div>' +
       '<div class="alert info">' + I('info') + '<span>Siswa mengerjakan selama durasi paket, tetapi tidak melewati waktu ditutup.</span></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" data-a="g_jsave">' + I('save') + 'Simpan</button>' });
     h.el.querySelectorAll('#jkl input').forEach(i => i.addEventListener('change', () => i.parentElement.classList.toggle('on', i.checked)));
     h.el.querySelectorAll('#jrg input').forEach(i => i.addEventListener('change', () => { i.parentElement.classList.toggle('on', i.checked); pgAuto(); }));
@@ -520,10 +574,9 @@
     };
     if (isAdmin()) { pgIsi(); if (!(D.peek('users') || []).length) D.fetch('users').then(pgIsi); }
   }
-  act.g_jtk = () => { $('#jtk').value = tokenBaru(); };
   act.g_jsave = async el => {
     const h = TKA._jh; if (!h) return;
-    const body = { id_paket: $('#jpk').value, mode: (TKA._jh && TKA._jh.el.querySelector('input[name=jmode]:checked') || { value: 'kelas' }).value, kelas: U.$$('#jkl input:checked').map(i => i.value), ruang: U.$$('#jrg input:checked').map(i => i.value), mulai: U.fromInput($('#jmu').value), selesai: U.fromInput($('#jse').value), token: $('#jtk').value };
+    const body = { id_paket: $('#jpk').value, mode: (TKA._jh && TKA._jh.el.querySelector('input[name=jmode]:checked') || { value: 'kelas' }).value, kelas: U.$$('#jkl input:checked').map(i => i.value), ruang: U.$$('#jrg input:checked').map(i => i.value), mulai: U.fromInput($('#jmu').value), selesai: U.fromInput($('#jse').value) };
     if (h.el.querySelector('#jpgw')) body.pengawas = U.$$('#jpgw input:checked', h.el).map(i => i.value); if (h.jid) body.id_jadwal = h.jid;
     el.disabled = true;
     try { const r = await A.call('jadwal.save', body); h.close(); D.invalidate('jadwal'); const fresh = await D.fetch('jadwal'); U.toast('Jadwal tersimpan. Token: ' + (r.token || body.token), 'ok', 5000); if (TKA._jset) TKA._jset(fresh); else if (TKA._jd) TKA._jd(); } catch (e) { el.disabled = false; U.err(e); }
@@ -605,13 +658,42 @@
     };
     const baris = data.siswa.length ? data.siswa.map((s, i) => '<tr><td class="sm muted">' + (i + 1) + '</td><td><b>' + esc(s.nama) + '</b><div class="xs muted mono">' + esc(s.username) + ' · ' + esc(s.kelas) + '</div></td><td><select class="select" data-kh="' + esc(s.id) + '">' + pilihan(s.status || '') + '</select></td></tr>').join('')
       : '<tr><td colspan="3" class="sm muted">Belum ada siswa di kelas jadwal ini.</td></tr>';
+    const ttdHtml = (data.ttd_kunci || []).length ? (data.ttd_kunci || []).map(kn => {
+      const sudah = (data.ttd || []).filter(t => t.kunci === kn.kunci);
+      const bisa = (kn.penandatangan || []).indexOf(S.user.id) > -1;
+      const sayaSudah = sudah.some(t => t.id_guru === S.user.id);
+      const slot = sudah.map(t => '<div class="ttd-slot"><img src="' + esc(t.gambar) + '" alt="Tanda tangan ' + esc(t.nama) + '"><span class="xs muted">' + esc(t.nama) + '</span></div>').join('');
+      const boleh = bisa && (sayaSudah || sudah.length < 2);
+      const pad = boleh
+        ? '<div class="ttd-pad" data-ttd="' + esc(kn.kunci) + '"><canvas width="480" height="150"></canvas><div class="row sp" style="margin-top:8px"><span class="xs muted">' + (sayaSudah ? 'Gambar ulang untuk mengubah tanda tangan Anda.' : 'Tanda tangan Anda: gambar di kotak lalu klik Simpan kehadiran.') + '</span><button type="button" class="btn ghost" data-ttd-hapus>Hapus</button></div></div>'
+        : (bisa ? '' : '<p class="xs muted">Anda bukan penandatangan untuk ruang atau kelas ini.</p>');
+      return '<div class="card flat mb8"><div class="row sp"><b>' + esc(kn.label) + '</b><span class="xs muted">' + sudah.length + ' dari 2 penandatangan</span></div>' +
+        (slot ? '<div class="ttd-row">' + slot + '</div>' : '<p class="xs muted">Belum ada tanda tangan.</p>') + pad + '</div>';
+    }).join('') : '<p class="sm muted">Belum ada ruang atau kelas untuk ditandatangani.</p>';
     const body = '<div class="sm b mb8">' + U.tglJam(j.mulai) + ' · ' + esc(j.kelas_nama.join(', ')) + '</div>' +
       '<div class="row wrap g8 mb16" id="khRingkas">' + ringkas() + '</div>' +
       '<div class="tw" style="max-height:44vh;overflow:auto"><table><thead><tr><th>No</th><th>Siswa</th><th>Kehadiran</th></tr></thead><tbody>' + baris + '</tbody></table></div>' +
-      '<h4 class="mt16 mb8">Tertib dan lancar ujian</h4>' + formKelas;
+      '<h4 class="mt16 mb8">Tertib dan lancar ujian</h4>' + formKelas + '<h4 class="mt16 mb8">Tanda tangan digital</h4>' + ttdHtml;
     const footer = '<button class="btn ghost" id="khIsi" type="button">Isi yang kosong dengan Hadir</button><span class="grow"></span><button class="btn sec" data-a="m_close" type="button">Batal</button><button class="btn" id="khSimpan" type="button">' + I('save') + 'Simpan kehadiran</button>';
     const h = U.modal({ title: 'Kehadiran · ' + j.paket, sub: esc(j.kode), body: body, footer: footer });
     const refresh = () => { h.$('#khRingkas').innerHTML = ringkas(); };
+    // ---- Tanda tangan: kanvas per ruang/kelas (hanya untuk penandatangan yang berhak) ----
+    const ttdInk = {}, ttdDirty = new Set();
+    const ttdPng = cv => { const t = document.createElement('canvas'); t.width = cv.width; t.height = cv.height; const tx = t.getContext('2d'); tx.fillStyle = '#ffffff'; tx.fillRect(0, 0, t.width, t.height); tx.drawImage(cv, 0, 0); return t.toDataURL('image/png'); };
+    h.el.querySelectorAll('.ttd-pad').forEach(p => {
+      const k = p.dataset.ttd, cv = p.querySelector('canvas'), cx = cv.getContext('2d');
+      cx.lineWidth = 2.6; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.strokeStyle = '#0f172a';
+      cv.style.touchAction = 'none';
+      let drawing = false, last = null;
+      const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height }; };
+      cv.addEventListener('pointerdown', e => { drawing = true; last = pos(e); cv.setPointerCapture(e.pointerId); });
+      cv.addEventListener('pointermove', e => { if (!drawing) return; const q = pos(e); cx.beginPath(); cx.moveTo(last.x, last.y); cx.lineTo(q.x, q.y); cx.stroke(); last = q; ttdInk[k] = true; ttdDirty.add(k); });
+      const selesai = () => { drawing = false; };
+      cv.addEventListener('pointerup', selesai); cv.addEventListener('pointercancel', selesai);
+      const hapus = p.querySelector('[data-ttd-hapus]');
+      if (hapus) hapus.addEventListener('click', () => { cx.clearRect(0, 0, cv.width, cv.height); ttdInk[k] = false; ttdDirty.add(k); });
+    });
+
     h.el.addEventListener('change', e => {
       const sel = e.target.closest('select[data-kh]');
       if (sel) { cur[sel.dataset.kh] = sel.value; refresh(); return; }
@@ -632,11 +714,12 @@
       const items = Object.keys(cur).filter(id => cur[id] !== orig[id]).map(id => ({ id_siswa: id, status: cur[id] }));
       const catatan = Object.keys(curC).filter(id => { const c = curC[id], o = origC[id]; return c.tertib !== o.tertib || c.lancar !== o.lancar || c.catatan.trim() !== o.catatan.trim(); })
         .map(id => Object.assign({ id_kelas: id }, curC[id], { catatan: curC[id].catatan.trim() }));
-      if (!items.length && !catatan.length) { U.toast('Belum ada perubahan.', 'warn'); return; }
+      const ttd = [...ttdDirty].filter(k => ttdInk[k]).map(k => ({ kunci: k, gambar: ttdPng(h.el.querySelector('.ttd-pad[data-ttd="' + k + '"] canvas')) }));
+      if (!items.length && !catatan.length && !ttd.length) { U.toast('Belum ada perubahan.', 'warn'); return; }
       const btn = h.$('#khSimpan'); btn.disabled = true;
       try {
-        await A.call('kehadiran.save', { id_jadwal: idJadwal, items: items, catatan: catatan });
-        h.close(); U.toast('Tersimpan: ' + items.length + ' kehadiran, ' + catatan.length + ' kelas.', 'ok');
+        await A.call('kehadiran.save', { id_jadwal: idJadwal, items: items, catatan: catatan, ttd: ttd });
+        h.close(); U.toast('Tersimpan: ' + items.length + ' kehadiran, ' + catatan.length + ' kelas, ' + ttd.length + ' tanda tangan.', 'ok');
         if (TKA._mon && TKA._mon.reload) TKA._mon.reload(idJadwal);
       } catch (e) { btn.disabled = false; U.toast((e && e.message) || 'Gagal menyimpan kehadiran.', 'err'); }
     });
@@ -646,9 +729,9 @@
   // ============================================================ LAPORAN & ANALISIS
   let LS = { paket: '', kelas: '', q: '', sort: 'skor' };
   TKA.route(ST, 'laporan', function (c) {
-    let rep = null;
+    let rep = null, lapPkt = null;
     const draw = () => {
-      const pk = D.peek('paket') || [];
+      const pk = lapPkt || [];
       let body = '';
       if (rep) {
         const r = rep, mx = Math.max.apply(null, r.dist.concat([1]));
@@ -666,7 +749,7 @@
     };
     TKA._ld = draw;
     TKA._lload = async () => { if (!LS.paket) { rep = null; draw(); return; } c.root.style.opacity = .6; try { const j = await A.call('lap.get', { id_paket: LS.paket, id_kelas: LS.kelas }, { read: true }); rep = j; TKA._lrep = j; } catch (e) { U.err(e); } c.root.style.opacity = 1; draw(); };
-    D.swr('paket', draw).then(() => { if (LS.paket) TKA._lload(); }).catch(U.err); draw();
+    A.call('lap.paket', {}, { read: true }).then(j => { lapPkt = j.paket || []; draw(); }).then(() => { if (LS.paket) TKA._lload(); }).catch(U.err); draw();
     return () => { TKA._ld = null; };
   });
   inp.g_lp = el => { LS.paket = el.value; TKA._lload(); };

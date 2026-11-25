@@ -331,3 +331,33 @@ body:has(.and){background:var(--primary-c)}
   .sh-menu{grid-template-columns:repeat(4,minmax(0,140px));justify-content:start;gap:16px}
   .sh-hero{max-width:720px}
 }
+
+/* ---- Dashboard guru: jadwal pengawasan (gaya kartu dompet + carousel) ---- */
+.dp-card{margin-top:16px;border-radius:20px;padding:18px;color:#fff;background:linear-gradient(135deg,#1e40af,#2563eb);box-shadow:0 12px 24px rgba(37,99,235,.28)}
+.dp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dp-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+.dp-big{font-size:26px;font-weight:800;margin-top:4px}
+.dp-sm{font-size:13px;opacity:.9;margin-top:2px}
+.dp-badge{background:rgba(255,255,255,.2);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:700;white-space:nowrap}
+.dp-act{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.2)}
+.dp-act a{display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;text-decoration:none;font-size:12px;font-weight:600}
+.dp-act a .i{font-size:24px}
+.dp-jc{width:280px}
+.dp-ruang{margin:-16px -16px 10px;padding:14px 16px;background:linear-gradient(135deg,#dbeafe,#eff6ff);color:#1e3a8a;font-weight:800;font-size:16px}
+.dp-hadir{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dp-chip{font-size:12px;font-weight:600;border-radius:99px;padding:4px 10px}
+.dp-chip b{font-weight:800}
+.dp-scroll .sh-card{background:#fff}
+@media(min-width:900px){.dp-scroll{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}.dp-jc{width:auto}}
+
+/* ---- Tanda tangan digital pada daftar hadir ---- */
+.ttd-row{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0}
+.ttd-slot{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;min-width:160px}
+.ttd-slot img{width:160px;height:auto;max-height:70px;object-fit:contain}
+.ttd-pad canvas{display:block;width:100%;max-width:480px;height:auto;aspect-ratio:480/150;border:1.5px dashed var(--line);border-radius:12px;background:#fff}
+
+/* ---- Token jadwal di kartu Jadwal pengawasan (di tengah, besar, tebal) ---- */
+.dp-tok{flex:1;text-align:center;padding:0 8px}
+.dp-tk-l{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.dp-tk{font-size:34px;font-weight:900;letter-spacing:.2em;margin-top:2px;line-height:1.1;text-shadow:0 2px 10px rgba(0,0,0,.2)}
+.dp-tk-s{font-size:12px;opacity:.9;margin-top:4px}

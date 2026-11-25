@@ -111,7 +111,7 @@
     const role = S.user.peran, app = document.getElementById('app');
     if (app.dataset.shell === role && $('#view')) return;
     app.dataset.shell = role;
-    const nm = S.setting.nama_sekolah || 'Simulasi TKA', links = NAV[role];
+    const nm = S.setting.nama_sekolah || 'Simulasi TKA', links = (NAV[role] || []).filter(l => !menuGuruOff(l[0]));
     if (role === 'siswa') {
       app.innerHTML = '<header class="top"><div class="brand">' + U.logoEl(S.setting.logo_url, '36px') + '<span class="t">' + esc(nm) + '</span></div>' +
         '<nav>' + links.map(l => '<a href="#/' + l[0] + '" data-nav="' + l[0] + '">' + I(l[1], 'sm') + l[2] + '</a>').join('') + '</nav>' +
@@ -154,6 +154,12 @@
     return null;
   }
   TKA.go = p => { const h = '#/' + p; if (location.hash === h) route(); else location.hash = h; };
+  // Saklar menu guru: 'paket-ujian' dan 'jadwal'/'pengawasan' dapat dinonaktifkan admin.
+  function menuGuruOff(sec) {
+    if (!S.user || S.user.peran !== 'guru') return false;
+    const k = sec === 'paket-ujian' ? 'menu_paket_guru' : (sec === 'jadwal' || sec === 'pengawasan') ? 'menu_jadwal_guru' : sec === 'soal' ? 'menu_soal_guru' : '';
+    return !!k && S.setting[k] === '0';
+  }
   async function route() {
     if (!S.user || !started) return;
     const my = ++rid;
@@ -163,6 +169,7 @@
     const m = match(S.user.peran, path) || match(S.user.peran, S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
     ensureShell();
     const sec = (path.split('/')[0]) || (S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
+    if (menuGuruOff(sec)) { const v0 = $('#view'); if (v0) v0.innerHTML = U.empty('block', 'Menu ini dinonaktifkan', 'Hubungi admin untuk mengaktifkannya kembali.'); return; }
     U.$$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === sec || (sec === 'hasil' && a.dataset.nav === 'riwayat')));
     const side = $('#side'); if (side) { side.classList.remove('open'); $('#scrim').classList.remove('open'); }
     const root = $('#view'); root.dataset.live = '';
