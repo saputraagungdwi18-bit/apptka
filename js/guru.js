@@ -546,16 +546,18 @@
     if (!paket.length && !j) return U.modal({ title: 'Belum ada paket resmi', body: '<p>Buat paket berjenis <b>Ujian resmi</b> dan publikasikan terlebih dahulu.</p>', footer: '<a class="btn" href="#/paket-ujian/baru" data-a="m_close">Buat paket</a>' });
     const start = j ? j.mulai : Math.ceil((now + 1800e3) / 900e3) * 900e3;
     const h = U.modal({ title: j ? 'Ubah jadwal' : 'Buat jadwal ujian', cls: 'wide', body: '<div class="col g16"><div class="field"><label>Paket ujian</label><select class="select" id="jpk">' + U.opt(paket.map(p => [p.id_paket, p.nama + ' (' + p.jumlah_soal + ' soal, ' + p.durasi + ' mnt)']), j ? j.id_paket : '', 'Pilih paket') + '</select></div>' +
-      '<div class="field"><label>Peserta ujian</label>' + (isAdmin() ? '<div class="row g8 mb8"><label class="chip' + (jRuangAwal ? '' : ' on') + '"><input type="radio" name="jmode" hidden value="kelas"' + (jRuangAwal ? '' : ' checked') + '>Per kelas</label><label class="chip' + (jRuangAwal ? ' on' : '') + '"><input type="radio" name="jmode" hidden value="ruang"' + (jRuangAwal ? ' checked' : '') + '>Per ruang</label></div>' : '') +'<div id="jgkelas" class="' + (jRuangAwal ? 'hide' : '') + '"><div class="chips" style="flex-wrap:wrap" id="jkl">' + kl.map(k => { const on = !!(j && (j.kelas || []).indexOf(k.id_kelas) > -1); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(k.id_kelas) + '"' + (on ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>'; }).join('') + '</div></div>' +(isAdmin() ? '<div id="jgruang" class="' + (jRuangAwal ? '' : 'hide') + '"><div class="chips" style="flex-wrap:wrap" id="jrg">' + rg.map(r => { const on = !!(j && (j.ruang || []).indexOf(r.id_ruang) > -1), kosong = !(r.siswa > 0); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(r.id_ruang) + '"' + (on ? ' checked' : '') + (kosong && !on ? ' disabled' : '') + '>' + esc(r.nama_ruang) + ' · ' + (r.siswa || 0) + ' siswa</label>'; }).join('') + '</div><span class="hint">Peserta adalah seluruh siswa di ruang yang dipilih. Ruang tanpa siswa tidak dapat dipilih.</span></div>' : '') + '</div>' +
+      '<div class="field"><label>Peserta ujian</label>' + (isAdmin() ? '<div class="row g8 mb8"><label class="chip' + (jRuangAwal ? '' : ' on') + '"><input type="radio" name="jmode" hidden value="kelas"' + (jRuangAwal ? '' : ' checked') + '>Per kelas</label><label class="chip' + (jRuangAwal ? ' on' : '') + '"><input type="radio" name="jmode" hidden value="ruang"' + (jRuangAwal ? ' checked' : '') + '>Per ruang</label></div>' : '') +'<div id="jgkelas" class="' + (jRuangAwal ? 'hide' : '') + '"><div class="chips" style="flex-wrap:wrap" id="jkl">' + kl.map(k => { const on = !!(j && (j.kelas || []).indexOf(k.id_kelas) > -1); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(k.id_kelas) + '"' + (on ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>'; }).join('') + '</div></div>' +(isAdmin() ? '<div id="jgruang" class="' + (jRuangAwal ? '' : 'hide') + '"><div class="chips" style="flex-wrap:wrap" id="jrg">' + rg.map(r => { const on = !!(j && (j.ruang || []).indexOf(r.id_ruang) > -1), kosong = !(r.siswa > 0); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(r.id_ruang) + '"' + (on ? ' checked' : '') + (kosong && !on ? ' disabled' : '') + '>' + esc(r.nama_ruang) + ' · ' + (r.siswa || 0) + ' siswa</label>'; }).join('') + '</div><span class="hint">Peserta adalah seluruh siswa di ruang yang dipilih. Ruang tanpa siswa tidak dapat dipilih.</span><div id="jprw" class="col g8" style="margin-top:12px"></div></div>' : '') + '</div>' +
       '<div class="grid g2"><div class="field"><label>Mulai dibuka</label><input type="datetime-local" class="input" id="jmu" value="' + U.toInput(start) + '"></div><div class="field"><label>Ditutup</label><input type="datetime-local" class="input" id="jse" value="' + U.toInput(j ? j.selesai : start + 3 * 3600e3) + '"></div></div>' +
       '<div class="grid g2"><div class="field"><label>Token sesi</label><div class="hint" style="padding-top:10px">Token berganti otomatis setiap 15 menit dan ditampilkan di kartu Jadwal pengawasan.</div></div>' + (isAdmin() ? '<div class="field"><label>Pengawas</label><div class="chips" style="flex-wrap:wrap" id="jpgw"></div><span class="hint">Guru ruang otomatis dicentang saat ruang dipilih. Anda dapat mengubahnya.</span></div>' : '') + '</div>' +
       '<div class="alert info">' + I('info') + '<span>Siswa mengerjakan selama durasi paket, tetapi tidak melewati waktu ditutup.</span></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" data-a="g_jsave">' + I('save') + 'Simpan</button>' });
     h.el.querySelectorAll('#jkl input').forEach(i => i.addEventListener('change', () => i.parentElement.classList.toggle('on', i.checked)));
-    h.el.querySelectorAll('#jrg input').forEach(i => i.addEventListener('change', () => { i.parentElement.classList.toggle('on', i.checked); pgAuto(); }));
+    h.el.querySelectorAll('#jrg input').forEach(i => i.addEventListener('change', () => { i.parentElement.classList.toggle('on', i.checked); prRender(); }));
     h.el.querySelectorAll('input[name=jmode]').forEach(i => i.addEventListener('change', () => {
       const ruang = i.value === 'ruang' && i.checked;
       h.el.querySelector('#jgkelas').classList.toggle('hide', ruang);
       h.el.querySelector('#jgruang').classList.toggle('hide', !ruang);
+      const pgF = h.el.querySelector('#jpgw'); if (pgF) pgF.closest('.field').classList.toggle('hide', ruang);
+      prRender();
       h.el.querySelectorAll('input[name=jmode]').forEach(x => x.parentElement.classList.toggle('on', x.checked));
     }));
     h.jid = j ? j.id_jadwal : null; TKA._jh = h;
@@ -572,12 +574,45 @@
         ((r && r.guru) || []).forEach(id => { const c = w.querySelector('input[value="' + id + '"]'); if (c && !c.checked) { c.checked = true; c.parentElement.classList.add('on'); } });
       });
     };
-    if (isAdmin()) { pgIsi(); if (!(D.peek('users') || []).length) D.fetch('users').then(pgIsi); }
+    // Pengawas per ruang: maks. 2 per ruang, satu orang tidak boleh bertugas di dua ruang
+    const prState = {};
+    const prAwal = (j && j.pengawas_ruang) || {};
+    rg.forEach(r => { if (prAwal[r.id_ruang] && prAwal[r.id_ruang].length) prState[r.id_ruang] = prAwal[r.id_ruang].slice(0, 2); });
+    h.prState = prState;
+    const prRender = () => {
+      const w = h.$('#jprw'); if (!w) return;
+      const dipilih = U.$$('#jrg input:checked', h.el).map(i => i.value);
+      dipilih.forEach(id => { if (!prState[id]) { const r = rg.find(x => x.id_ruang === id); prState[id] = ((r && r.guru) || []).slice(0, 2); } });
+      Object.keys(prState).forEach(id => { if (dipilih.indexOf(id) < 0) delete prState[id]; });
+      const users = (D.peek('users') || []).filter(u => u.peran !== 'siswa');
+      w.innerHTML = dipilih.length ? dipilih.map(id => {
+        const r = rg.find(x => x.id_ruang === id) || { nama_ruang: id };
+        const terpilih = prState[id] || [];
+        const pilihan = users.map(u => {
+          const on = terpilih.indexOf(u.id) > -1;
+          const dipakaiLain = Object.keys(prState).some(x => x !== id && (prState[x] || []).indexOf(u.id) > -1);
+          const nonaktif = !on && (dipakaiLain || terpilih.length >= 2);
+          return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden data-r="' + esc(id) + '" value="' + esc(u.id) + '"' + (on ? ' checked' : '') + (nonaktif ? ' disabled' : '') + '>' + esc(u.nama) + '</label>';
+        }).join('');
+        return '<div class="card flat"><div class="row sp"><b>' + esc(r.nama_ruang) + '</b><span class="xs muted">' + terpilih.length + ' dari 2 pengawas</span></div><div class="chips" style="flex-wrap:wrap;margin-top:8px">' + pilihan + '</div></div>';
+      }).join('') : '<p class="xs muted">Centang ruang terlebih dahulu untuk memilih pengawasnya.</p>';
+      w.querySelectorAll('input[data-r]').forEach(i => i.addEventListener('change', () => {
+        const id = i.dataset.r, lst = (prState[id] || []).slice();
+        if (i.checked) { if (lst.length < 2 && lst.indexOf(i.value) < 0) lst.push(i.value); }
+        else { const k = lst.indexOf(i.value); if (k > -1) lst.splice(k, 1); }
+        prState[id] = lst; prRender();
+      }));
+    };
+    { const pgF0 = h.el.querySelector('#jpgw'); if (pgF0) pgF0.closest('.field').classList.toggle('hide', jRuangAwal); }
+    if (isAdmin()) { pgIsi(); if (!(D.peek('users') || []).length) D.fetch('users').then(() => { pgIsi(); prRender(); }); }
+    prRender();
   }
   act.g_jsave = async el => {
     const h = TKA._jh; if (!h) return;
     const body = { id_paket: $('#jpk').value, mode: (TKA._jh && TKA._jh.el.querySelector('input[name=jmode]:checked') || { value: 'kelas' }).value, kelas: U.$$('#jkl input:checked').map(i => i.value), ruang: U.$$('#jrg input:checked').map(i => i.value), mulai: U.fromInput($('#jmu').value), selesai: U.fromInput($('#jse').value) };
-    if (h.el.querySelector('#jpgw')) body.pengawas = U.$$('#jpgw input:checked', h.el).map(i => i.value); if (h.jid) body.id_jadwal = h.jid;
+    if (body.mode === 'ruang') { body.pengawas_ruang = {}; U.$$('#jrg input:checked', h.el).forEach(i => { body.pengawas_ruang[i.value] = ((h.prState || {})[i.value] || []).slice(); }); }
+    else if (h.el.querySelector('#jpgw')) body.pengawas = U.$$('#jpgw input:checked', h.el).map(i => i.value);
+    if (h.jid) body.id_jadwal = h.jid;
     el.disabled = true;
     try { const r = await A.call('jadwal.save', body); h.close(); D.invalidate('jadwal'); const fresh = await D.fetch('jadwal'); U.toast('Jadwal tersimpan. Token: ' + (r.token || body.token), 'ok', 5000); if (TKA._jset) TKA._jset(fresh); else if (TKA._jd) TKA._jd(); } catch (e) { el.disabled = false; U.err(e); }
   };
@@ -729,9 +764,11 @@
   // ============================================================ LAPORAN & ANALISIS
   let LS = { paket: '', kelas: '', q: '', sort: 'skor' };
   TKA.route(ST, 'laporan', function (c) {
-    let rep = null, lapPkt = null;
+    let rep = null, lapPkt = null, lapKelas = null;
+    const kelasLaporan = () => lapKelas || [];
     const draw = () => {
       const pk = lapPkt || [];
+      if (LS.kelas && !kelasLaporan().some(k => k.id_kelas === LS.kelas)) LS.kelas = '';
       let body = '';
       if (rep) {
         const r = rep, mx = Math.max.apply(null, r.dist.concat([1]));
@@ -743,18 +780,43 @@
           '<div class="card pad0 mb16"><div class="card-h"><div><h4>Analisis butir soal</h4><p class="xs muted">% benar rendah dan daya beda ≤ 0,2 = soal perlu ditinjau.</p></div></div><div class="tw"><table><thead><tr><th>No</th><th>Soal</th><th>Topik</th><th>% benar</th><th>Daya beda</th><th>Pengecoh dominan</th></tr></thead><tbody>' + r.soal.slice().sort((a, b) => a.pct - b.pct).map(s => '<tr><td>' + s.no + '</td><td class="sm" style="max-width:340px">' + esc(s.ringkas) + '</td><td class="sm">' + esc(s.topik) + '</td><td style="min-width:120px">' + U.bar(s.pct) + '<span class="xs muted">' + s.pct + '%</span></td><td>' + (s.daya_beda <= 0.2 ? '<span class="badge warn">' + s.daya_beda + '</span>' : '<span class="sm">' + s.daya_beda + '</span>') + '</td><td class="sm">' + (s.modus_salah ? s.modus_salah + ' <span class="muted">(kunci ' + s.kunci + ')</span>' : '—') + '</td></tr>').join('') + '</tbody></table></div></div>' +
           '<div class="card pad0"><div class="card-h"><h4>Hasil siswa</h4><div class="row g8 noprint"><input class="input" style="width:200px" placeholder="Cari…" data-i="g_lq" data-ev="input" value="' + esc(LS.q) + '"><select class="select" style="width:140px" data-i="g_lsort"><option value="skor"' + (LS.sort === 'skor' ? ' selected' : '') + '>Skor tertinggi</option><option value="nama"' + (LS.sort === 'nama' ? ' selected' : '') + '>Nama A–Z</option></select></div></div><div class="tw"><table><thead><tr><th>#</th><th>Nama</th><th>Kelas</th><th>Skor</th><th>B / S / K</th><th>Durasi</th><th>Status</th></tr></thead><tbody>' + (rows.map((x, i) => '<tr><td class="muted">' + (i + 1) + '</td><td><b>' + esc(x.nama) + '</b><div class="xs muted mono">' + esc(x.username) + '</div></td><td class="sm">' + esc(x.kelas) + '</td><td><b style="color:var(--primary-c)">' + x.skor + '</b></td><td class="sm">' + x.benar + ' / ' + x.salah + ' / ' + x.kosong + '</td><td class="sm">' + x.durasi + ' mnt</td><td>' + U.badge(x.lulus ? 'Lulus' : 'Belum', x.lulus ? 'ok' : 'bad') + '</td></tr>').join('') || '<tr><td colspan="7">' + U.empty('inbox', 'Belum ada hasil') + '</td></tr>') + '</tbody></table></div></div>';
       }
-      c.root.innerHTML = U.pageHead('Laporan & analisis', 'Statistik hasil, analisis butir, dan perbandingan kelas.', rep ? '<button class="btn sec noprint" data-a="g_lcsv">' + I('download') + 'Unduh Excel (CSV)</button><button class="btn sec noprint" onclick="window.print()">' + I('print') + 'Cetak / PDF</button>' : '') +
-        '<div class="card flat mb16 noprint"><div class="row g16 wrap"><div class="field grow" style="min-width:240px"><label>Paket ujian</label><select class="select" data-i="g_lp">' + U.opt(pk.map(p => [p.id_paket, p.nama + ' (' + p.mapel + ')']), LS.paket, 'Pilih paket…') + '</select></div><div class="field" style="min-width:180px"><label>Kelas</label><select class="select" data-i="g_lk">' + U.opt(M().kelas.map(k => [k.id_kelas, k.nama_kelas]), LS.kelas, 'Semua kelas') + '</select></div></div></div>' +
+      c.root.innerHTML = U.pageHead('Laporan & analisis', 'Statistik hasil, analisis butir, dan perbandingan kelas.', rep ? '<button class="btn sec noprint" data-a="g_lcsv">' + I('download') + 'Unduh Excel (.xls)</button><button class="btn sec noprint" onclick="window.print()">' + I('print') + 'Cetak / PDF</button>' : '') +
+        '<div class="card flat mb16 noprint"><div class="row g16 wrap"><div class="field grow" style="min-width:240px"><label>Paket ujian</label><select class="select" data-i="g_lp">' + U.opt(pk.map(p => [p.id_paket, p.nama + ' (' + p.mapel + ')']), LS.paket, 'Pilih paket…') + '</select></div><div class="field" style="min-width:180px"><label>Kelas</label><select class="select" data-i="g_lk">' + U.opt(kelasLaporan().map(k => [k.id_kelas, k.nama_kelas]), LS.kelas, 'Semua kelas') + '</select></div></div></div>' +
         (rep ? body : '<div class="card">' + U.empty('analytics', 'Pilih paket ujian', 'Statistik akan tampil setelah paket dipilih.') + '</div>');
     };
     TKA._ld = draw;
     TKA._lload = async () => { if (!LS.paket) { rep = null; draw(); return; } c.root.style.opacity = .6; try { const j = await A.call('lap.get', { id_paket: LS.paket, id_kelas: LS.kelas }, { read: true }); rep = j; TKA._lrep = j; } catch (e) { U.err(e); } c.root.style.opacity = 1; draw(); };
-    A.call('lap.paket', {}, { read: true }).then(j => { lapPkt = j.paket || []; draw(); }).then(() => { if (LS.paket) TKA._lload(); }).catch(U.err); draw();
+    A.call('lap.paket', {}, { read: true }).then(j => { lapPkt = j.paket || []; lapKelas = j.kelas || []; draw(); }).then(() => { if (LS.paket) TKA._lload(); }).catch(U.err); draw();
     return () => { TKA._ld = null; };
   });
   inp.g_lp = el => { LS.paket = el.value; TKA._lload(); };
   inp.g_lk = el => { LS.kelas = el.value; TKA._lload(); };
   inp.g_lq = U.debounce(el => { LS.q = el.value; if (TKA._ld) { TKA._ld(); const e = $('[data-i=g_lq]'); if (e) { e.focus(); e.setSelectionRange(LS.q.length, LS.q.length); } } }, 200);
   inp.g_lsort = el => { LS.sort = el.value; if (TKA._ld) TKA._ld(); };
-  act.g_lcsv = () => { const r = TKA._lrep; if (!r) return; U.download('laporan-' + r.paket.nama.replace(/\W+/g, '-') + '.csv', U.csvBuild(['Peringkat', 'Nama', 'NISN', 'Kelas', 'Skor', 'Benar', 'Salah', 'Kosong', 'Durasi (mnt)', 'Status KKM'], r.rows.map((x, i) => [i + 1, x.nama, x.username, x.kelas, x.skor, x.benar, x.salah, x.kosong, x.durasi, x.lulus ? 'Lulus' : 'Belum']))); };
+  // Tabel Excel (SpreadsheetML): judul, header berwarna, garis tabel; angka tersimpan sebagai angka
+  const xlsEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const xlsCell = (v, style) => { const num = typeof v === 'number' && isFinite(v); return '<Cell' + (style ? ' ss:StyleID="' + style + '"' : '') + '><Data ss:Type="' + (num ? 'Number' : 'String') + '">' + xlsEsc(v) + '</Data></Cell>'; };
+  const xlsBuild = (judul, sub, head, data) => {
+    const bd = ['Top', 'Bottom', 'Left', 'Right'].map(pos => '<Border ss:Position="' + pos + '" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#9CA3AF"/>').join('');
+    const rows = ['<Row ss:Height="24">' + xlsCell(judul, 'judul') + '</Row>', '<Row>' + xlsCell(sub, 'sub') + '</Row>', '<Row></Row>',
+      '<Row ss:Height="22">' + head.map(h => xlsCell(h, 'head')).join('') + '</Row>'].concat(data.map(r => '<Row>' + r.map(v => xlsCell(v, 'sel')).join('') + '</Row>'));
+    return '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>' +
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles>' +
+      '<Style ss:ID="judul"><Font ss:Bold="1" ss:Size="14" ss:Color="#0F172A"/></Style>' +
+      '<Style ss:ID="sub"><Font ss:Color="#64748B"/></Style>' +
+      '<Style ss:ID="head"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1E3A8A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders>' + bd + '</Borders></Style>' +
+      '<Style ss:ID="sel"><Alignment ss:Vertical="Center"/><Borders>' + bd + '</Borders></Style>' +
+      '</Styles><Worksheet ss:Name="Hasil"><Table>' +
+      [60, 180, 120, 110, 60, 60, 60, 60, 90, 90].map(w => '<Column ss:Width="' + w + '"/>').join('') +
+      rows.join('') + '</Table></Worksheet></Workbook>';
+  };
+  act.g_lcsv = () => {
+    const r = TKA._lrep; if (!r) return;
+    const kls = LS.kelas ? ((M().kelas.find(k => k.id_kelas === LS.kelas) || {}).nama_kelas || '') : 'Semua kelas';
+    const judul = 'Hasil siswa: ' + r.paket.nama + ' (' + r.paket.mapel + ')';
+    const sub = 'KKM ' + r.paket.kkm + ' · ' + kls + ' · ' + r.rows.length + ' peserta · ' + new Date().toLocaleDateString('id-ID');
+    const head = ['Peringkat', 'Nama', 'NISN / Username', 'Kelas', 'Skor', 'Benar', 'Salah', 'Kosong', 'Durasi (mnt)', 'Status KKM'];
+    const data = r.rows.map((x, i) => [i + 1, x.nama, x.username, x.kelas, x.skor, x.benar, x.salah, x.kosong, x.durasi, x.lulus ? 'Lulus' : 'Belum']);
+    U.download('hasil-' + r.paket.nama.replace(/\W+/g, '-') + '.xls', xlsBuild(judul, sub, head, data), 'application/vnd.ms-excel;charset=utf-8');
+  };
 })();
