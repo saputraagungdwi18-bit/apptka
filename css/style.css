@@ -361,3 +361,16 @@ body:has(.and){background:var(--primary-c)}
 .dp-tk-l{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
 .dp-tk{font-size:34px;font-weight:900;letter-spacing:.2em;margin-top:2px;line-height:1.1;text-shadow:0 2px 10px rgba(0,0,0,.2)}
 .dp-tk-s{font-size:12px;opacity:.9;margin-top:4px}
+
+/* ---- Kartu Jadwal pengawasan: ukuran token & tampilan HP tidak bergeser ---- */
+.dp-tk{font-size:26px;letter-spacing:.14em}
+.dp-card{box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden}
+.dp-scroll{box-sizing:border-box;max-width:100%}
+@media(max-width:640px){
+  .dp-scroll{margin:0;padding:4px 0 12px}
+  .dp-jc{width:min(78vw,280px)}
+  .dp-top{flex-wrap:wrap}
+  .dp-tok{flex:1 1 100%;order:3;padding:12px 0 0}
+  .dp-tk{font-size:clamp(20px,7vw,26px);letter-spacing:.1em}
+  .dp-act{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
