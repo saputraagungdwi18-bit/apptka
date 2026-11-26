@@ -79,7 +79,7 @@
     const kaSel = new Set(u && u.kelas_ajar ? String(u.kelas_ajar).split(',').filter(Boolean) : []);
     const kaOpsi = M().kelas;
     const kaRingkas = () => { const n = kaWrap.querySelectorAll('#fkaa input:checked').length; kaWrap.querySelector('#fkacnt').textContent = n ? n + ' kelas dipilih' : 'Belum ada kelas dipilih'; };
-    kaWrap.innerHTML = '<div class="row sp"><label>Kelas Ajar</label><span class="sm muted" id="fkacnt"></span></div>' +
+    kaWrap.innerHTML = '<div class="row sp"><label>Kelas yang diajar</label><span class="sm muted" id="fkacnt"></span></div>' +
       '<div class="sel-list" id="fkaa" style="max-height:160px">' + (kaOpsi.length ? kaOpsi.map(k => '<label><input type="checkbox" class="chk" value="' + esc(k.id_kelas) + '"' + (kaSel.has(k.id_kelas) ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>').join('') : '<p class="sm muted" style="padding:10px 12px">Belum ada kelas. Tambahkan dulu di menu Kelas Mapel &amp; Ruang.</p>') + '</div>' +
       '<span class="hint">Guru hanya dapat membuat jadwal ujian untuk kelas yang dicentang. Jika tidak ada yang dicentang, guru dapat memilih semua kelas.</span>';
     kaWrap.querySelector('#fkaa').addEventListener('change', kaRingkas);
@@ -435,7 +435,7 @@
         '<div class="card flat"><div class="row sp"><h4>Mata pelajaran yang diampu</h4><span class="sm muted">' + PG.mapel.size + ' dipilih</span></div>' +
           '<div class="pgbox">' + (mapelOpt.length ? kotak(mapelOpt, PG.mapel, 'pg_m') : '<p class="sm muted">Belum ada mata pelajaran.</p>') + '</div>' +
           '<div class="row g8 mt8"><button class="btn ghost sm" data-a="pg_all" data-g="m">Pilih semua</button><button class="btn ghost sm" data-a="pg_none" data-g="m">Kosongkan</button></div></div>' +
-        '<div class="card flat"><div class="row sp"><h4>Kelas Ajar</h4><span class="sm muted">' + PG.kelas.size + ' dipilih</span></div>' +
+        '<div class="card flat"><div class="row sp"><h4>Kelas yang diajar</h4><span class="sm muted">' + PG.kelas.size + ' dipilih</span></div>' +
           '<div class="pgbox">' + (kelasOpt2.length ? kotak(kelasOpt2, PG.kelas, 'pg_k') : '<p class="sm muted">Belum ada kelas.</p>') + '</div>' +
           '<div class="row g8 mt8"><button class="btn ghost sm" data-a="pg_all" data-g="k">Pilih semua</button><button class="btn ghost sm" data-a="pg_none" data-g="k">Kosongkan</button></div></div>' +
       '</div>' +

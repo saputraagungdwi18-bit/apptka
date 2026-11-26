@@ -247,7 +247,7 @@
         const sudahBeda = Array.from(sel).sort().join(',') !== awal;
         const tb = blok.querySelector('#kajarsv'); tb.classList.toggle('off', !sudahBeda);
       };
-      blok.innerHTML = '<div class="row sp"><h4>Kelas Ajar</h4><span class="sm muted" id="kringkas"></span></div>' +
+      blok.innerHTML = '<div class="row sp"><h4>Kelas yang saya ajar</h4><span class="sm muted" id="kringkas"></span></div>' +
         '<p class="xs muted" style="margin-top:-6px">Ketuk kelas untuk memilih atau membatalkan. Jadwal ujian hanya dapat dibuat untuk kelas yang dipilih.</p>' +
         '<div class="kchips" id="kchips"></div>' +
         '<div class="row sp wrap"><button class="btn ghost sm" type="button" id="kclr">Kosongkan</button><button class="btn sm" type="button" id="kajarsv">' + I('save', 'sm') + 'Simpan kelas</button></div>';

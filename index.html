@@ -32,6 +32,8 @@
   </script>
 </head>
 <body>
+  <div id="splash" aria-hidden="true"><div class="sp-box"><div class="sp-ring"></div><img class="sp-logo" src="icons/icon-192.png" alt=""><div class="sp-name">Simulasi TKA</div><div class="sp-sub">Memuat aplikasi<span class="sp-dots"><i>.</i><i>.</i><i>.</i></span></div></div></div>
+  <script>(function(){var s=document.getElementById("splash");if(!s)return;var masuk=false;try{masuk=!!(localStorage.getItem("tka:auth")||sessionStorage.getItem("tka:auth"));}catch(e){}if(masuk){s.remove();return;}setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove();},700);},5000);})();</script>
   <div id="app"><div class="login"><div class="login-card tc"><div class="sk" style="height:56px;width:56px;border-radius:14px;margin:0 auto"></div><p class="sm muted mt16">Memuat aplikasi…</p></div></div></div>
   <noscript><p style="padding:24px">Aplikasi ini memerlukan JavaScript.</p></noscript>
   <script>
