@@ -138,16 +138,6 @@
     U.toast(j.dihapus + ' soal dihapus' + (j.dilewati.length ? '; ' + j.dilewati.length + ' dilewati (' + j.dilewati[0] + ')' : ''), j.dilewati.length ? 'warn' : 'ok', 5000);
   }
   act.g_sdel = el => delSoal([el.dataset.id]);
-  // Tutup modal lalu buka form paket baru. Navigasi dipanggil SETELAH modal dilepas,
-// agar render halaman tujuan tidak ditimpa oleh render ulang penutupan modal.
-act.g_ke_paket_baru = () => {
-  const sisa = document.querySelectorAll('.mdl-bg.on, .mdl.on');
-  sisa.forEach(x => {
-    x.classList.remove('on');
-    setTimeout(() => { try { x.remove(); } catch (e) {} }, 200);
-  });
-  TKA.go('paket-ujian/baru');
-};
   act.g_sbulkdel = () => delSoal(Array.from(SF.sel));
 
   // ---- form soal ----
@@ -429,103 +419,60 @@ act.g_ke_paket_baru = () => {
       await D.swr('soal', () => {}, 60000);
     } catch (e) { c.root.innerHTML = '<div class="card">' + U.empty('error', 'Gagal memuat', e.message, '<a class="btn mt16" href="#/paket-ujian">Kembali</a>') + '</div>'; return; }
     const all = (D.peek('soal') || []), by = {}; all.forEach(s => { by[s.id_soal] = s; });
-    const sel = P.daftar_soal.filter(i => by[i]), PF = { q: '', mapel: '', kes: '', lim: 60, lastF: null };
+    const sel = P.daftar_soal.filter(i => by[i]), PF = { q: '', mapel: '', kes: '', lim: 60 };
     const topN = () => Array.from(new Set(all.map(s => s.topik)));
     c.root.innerHTML = '<div class="row mb16"><a class="btn ghost sm" href="#/paket-ujian">' + I('arrow_back', 'sm') + 'Paket ujian</a></div>' + U.pageHead(id ? 'Ubah paket' : 'Buat paket', 'Pilih soal aktif dan atur urutannya.') +
       '<div class="card col g16 mb16"><div class="grid g3"><div class="field" style="grid-column:span 2"><label>Nama paket</label><input class="input" id="pnm" value="' + esc(P.nama) + '" placeholder="mis. Simulasi TKA Matematika 01"></div><div class="field"><label>Mata pelajaran</label>' + paketMapelSelect(P.id_mapel) + '</div></div>' +
       '<div class="grid gs4"><div class="field"><label>Jenis</label><select class="select" id="pjn">' + U.opt([['Latihan', 'Latihan mandiri'], ['Resmi', 'Ujian resmi (dijadwalkan)']], P.jenis) + '</select></div><div class="field"><label>Durasi (menit)</label><input class="input" type="number" id="pdr" min="5" max="300" value="' + P.durasi + '"></div><div class="field"><label>KKM (0–100)</label><input class="input" type="number" id="pkk" min="0" max="100" value="' + P.kkm + '"></div><div class="field"><label>Status</label><select class="select" id="pst">' + U.opt([['Draft', 'Draft'], ['Terpublikasi', 'Terpublikasi']], P.status) + '</select></div></div>' +
-      '<div class="field"><label>Peruntukan paket</label><input class="input" value="Semua" disabled><span class="hint">Seluruh soal — umum maupun kelas khusus — tampil di daftar Pilih Soal di bawah. Pembedaan kelas diatur saat menjadwalkan ujian.</span></div><div class="field"><label>Deskripsi singkat (opsional)</label><input class="input" id="pds" value="' + esc(P.deskripsi) + '" maxlength="300"></div><div class="row g24 wrap sm"><label class="row g8"><span class="sw"><input type="checkbox" id="pas"' + (P.acak_soal ? ' checked' : '') + '><i></i></span>Acak urutan soal</label><label class="row g8"><span class="sw"><input type="checkbox" id="pao"' + (P.acak_opsi ? ' checked' : '') + '><i></i></span>Acak urutan pilihan</label></div></div>' +
-      pengHtml(P.pengaturan) + '<div class="grid g2" style="align-items:start" id="pbg"><div class="card pad0"><div class="card-h"><h4>Pilih soal</h4><span class="sm muted" id="pcnt"></span></div><div class="filters"><div class="grow"><input class="input" placeholder="Cari…" data-i="g_pf" data-k="q" data-ev="input"></div><select class="select" data-i="g_pf" data-k="mapel">' + U.opt(mapelOpt(), '', 'Semua mapel') + '</select><select class="select" data-i="g_pf" data-k="kes">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], '', 'Semua tingkat') + '</select><label class="row g8 sm" style="flex:none;cursor:pointer" title="Centang semua soal aktif pada daftar ini"><input type="checkbox" class="chk" id="pall" data-a="g_pall"> Pilih semua</label></div><div class="sel-list" id="ppick" style="border:0;border-radius:0"></div></div>' +
+      '<div class="field"><label>Peruntukan paket</label><select class="select" id="pkel">' + U.opt([['', 'Umum (semua kelas)']].concat(M().kelas.map(k => [k.id_kelas, k.nama_kelas])), P.kelas_khusus || '') + '</select><span class="hint">Jika dipilih, paket hanya boleh dijadwalkan untuk kelas ini.</span></div><div class="field"><label>Deskripsi singkat (opsional)</label><input class="input" id="pds" value="' + esc(P.deskripsi) + '" maxlength="300"></div><div class="row g24 wrap sm"><label class="row g8"><span class="sw"><input type="checkbox" id="pas"' + (P.acak_soal ? ' checked' : '') + '><i></i></span>Acak urutan soal</label><label class="row g8"><span class="sw"><input type="checkbox" id="pao"' + (P.acak_opsi ? ' checked' : '') + '><i></i></span>Acak urutan pilihan</label></div></div>' +
+      pengHtml(P.pengaturan) + '<div class="grid g2" style="align-items:start" id="pbg"><div class="card pad0"><div class="card-h"><h4>Pilih soal</h4><span class="sm muted" id="pcnt"></span></div><div class="filters"><div class="grow"><input class="input" placeholder="Cari…" data-i="g_pf" data-k="q" data-ev="input"></div><select class="select" data-i="g_pf" data-k="mapel">' + U.opt(mapelOpt(), '', 'Semua mapel') + '</select><select class="select" data-i="g_pf" data-k="kes">' + U.opt([['Mudah', 'Mudah'], ['Sedang', 'Sedang'], ['Sukar', 'Sukar']], '', 'Semua tingkat') + '</select></div><div class="sel-list" id="ppick" style="border:0;border-radius:0"></div></div>' +
       '<div class="card pad0"><div class="card-h"><h4>Soal terpilih</h4><span class="badge info" id="psel"></span><span class="sm muted" id="ptot"></span></div><div style="padding:12px;max-height:520px;overflow-y:auto"><ol class="ord" id="pord"></ol></div></div></div>' +
       '<div class="row sp wrap mt16"><a class="btn ghost" href="#/paket-ujian">Batal</a><button class="btn" data-a="g_psave">' + I('save') + 'Simpan paket</button></div>';
     if (window.innerWidth < 900) $('#pbg').style.gridTemplateColumns = '1fr';
-
-    const kkLabel = s => {
-      if (!s.kelas_khusus) return '';
-      const k = M().kelas.filter(x => x.id_kelas === s.kelas_khusus)[0];
-      return ' ' + U.badge('Khusus ' + ((k && k.nama_kelas) || '-'), 'info');
-    };
-    // Sinkronkan status centang "Pilih semua" dengan isi daftar yang sedang tampil.
-    const syncAll = () => {
-      const al = $('#pall'); if (!al) return;
-      const f = PF.lastF || [];
-      const aktif = f.filter(s => s.status === 'Aktif');
-      al.disabled = aktif.length === 0;
-      al.checked = aktif.length > 0 && aktif.every(s => sel.indexOf(s.id_soal) > -1);
-      al.indeterminate = !al.checked && aktif.some(s => sel.indexOf(s.id_soal) > -1);
-    };
-    // Daftar soal: seluruh soal (umum dan kelas khusus) tanpa filter peruntukan. Kolom No. di kiri.
     const drawPick = () => {
-      const f = all.filter(s => (!PF.q || (s.ringkas + ' ' + s.topik).toLowerCase().indexOf(PF.q.toLowerCase()) > -1) && (!PF.mapel || s.id_mapel === PF.mapel) && (!PF.kes || s.kesulitan === PF.kes));
-      PF.lastF = f;
-      const view = f.slice(0, PF.lim);
-      $('#ppick').innerHTML = view.length
-        ? view.map((s, i) => {
-            const on = sel.indexOf(s.id_soal) > -1;
-            return '<label class="row g8" style="align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer">' +
-              '<span class="xs muted" style="width:26px;text-align:right;flex:none;padding-top:3px">' + (i + 1) + '</span>' +
-              '<input type="checkbox" class="chk" style="margin-top:2px;flex:none" data-a="g_ppick" data-id="' + s.id_soal + '"' + (on ? ' checked' : '') + (s.status !== 'Aktif' && !on ? ' disabled' : '') + '>' +
-              '<div class="grow"><div class="sm">' + esc(s.ringkas) + '</div><div class="xs muted">' + esc(mapelNm(s.id_mapel)) + ' · ' + esc(s.topik) + ' ' + U.kes(s.kesulitan) + kkLabel(s) + (s.status !== 'Aktif' ? ' ' + U.badge('Draft', 'neu') : '') + '</div></div></label>';
-          }).join('') + (f.length > PF.lim ? '<div class="tc" style="padding:10px"><button class="btn sec sm" data-a="g_pmore">Tampilkan lebih banyak (' + (f.length - PF.lim) + ')</button></div>' : '')
-        : '<div class="empty sm">Tidak ada soal.</div>';
+      const f = all.filter(s => (s.kelas_khusus || '') === (($('#pkel') || {}).value || '') && (!PF.q || (s.ringkas + ' ' + s.topik).toLowerCase().indexOf(PF.q.toLowerCase()) > -1) && (!PF.mapel || s.id_mapel === PF.mapel) && (!PF.kes || s.kesulitan === PF.kes));
+      $('#ppick').innerHTML = f.slice(0, PF.lim).map(s => '<label><input type="checkbox" class="chk" data-a="g_ppick" data-id="' + s.id_soal + '"' + (sel.indexOf(s.id_soal) > -1 ? ' checked' : '') + (s.status !== 'Aktif' && sel.indexOf(s.id_soal) < 0 ? ' disabled' : '') + '><div class="grow"><div class="sm">' + esc(s.ringkas) + '</div><div class="xs muted">' + esc(mapelNm(s.id_mapel)) + ' · ' + esc(s.topik) + ' ' + U.kes(s.kesulitan) + (s.status !== 'Aktif' ? ' ' + U.badge('Draft', 'neu') : '') + '</div></div></label>').join('') + (f.length > PF.lim ? '<div class="tc" style="padding:10px"><button class="btn sec sm" data-a="g_pmore">Tampilkan lebih banyak (' + (f.length - PF.lim) + ')</button></div>' : '') || '<div class="empty sm">Tidak ada soal.</div>';
       $('#pcnt').textContent = f.length + ' soal';
-      syncAll();
     };
     const poinM = Object.assign({}, P.poin || {});
     const poinOf = i => (poinM[i] !== undefined && poinM[i] !== '' ? Number(poinM[i]) : (by[i] ? Number(by[i].poin || 1) : 1));
     const totPoin = () => Math.round(sel.reduce((a, i) => a + poinOf(i), 0) * 100) / 100;
     const drawSel = () => {
-      let nu = 0, nk = 0;
-      sel.forEach(i => { const so = by[i]; if (!so) return; if (String(so.kelas_khusus || '')) nk++; else nu++; });
       $('#psel').textContent = sel.length + ' soal';
-      $('#ptot').textContent = 'Total poin: ' + totPoin() + ' · ' + nu + ' umum / ' + nk + ' khusus';
+      $('#ptot').textContent = 'Total poin: ' + totPoin();
       $('#pord').innerHTML = sel.map((i, n) => '<li><span class="n">' + (n + 1) + '</span><div class="grow sm">' + esc((by[i] || { ringkas: '(soal hilang)' }).ringkas) + (by[i] ? '<div class="xs muted">' + esc(by[i].topik) + '</div>' : '') + '</div>' +
         '<input type="number" class="input" style="width:76px;height:34px" min="1" max="100" step="1" value="' + Math.round(poinOf(i)) + '" data-i="g_pp" data-id="' + i + '" aria-label="Poin soal ' + (n + 1) + '">' +
         '<button class="ibtn" data-a="g_pup" data-n="' + n + '"' + (n === 0 ? ' disabled' : '') + '>' + I('arrow_upward', 'sm') + '</button><button class="ibtn" data-a="g_pdn" data-n="' + n + '"' + (n === sel.length - 1 ? ' disabled' : '') + '>' + I('arrow_downward', 'sm') + '</button><button class="ibtn dng" data-a="g_prm" data-id="' + i + '">' + I('close', 'sm') + '</button></li>').join('') || '<li class="muted sm" style="border:0;justify-content:center">Belum ada soal dipilih</li>';
     };
-    TKA._pf = { sel: sel, PF: PF, drawPick: drawPick, drawSel: drawSel, syncAll: syncAll, id: id, poin: poinM, poinOf: poinOf, totPoin: totPoin };
-    // Paket baru: otomatis memilih semua soal Aktif sesuai mata pelajaran (umum dan kelas khusus sekaligus).
+    TKA._pf = { sel: sel, PF: PF, drawPick: drawPick, drawSel: drawSel, id: id, poin: poinM, poinOf: poinOf, totPoin: totPoin };
+    // Soal terpilih otomatis: paket baru langsung memilih semua soal Aktif sesuai mata pelajaran (centang masih bisa diubah)
     const autoPilih = () => {
-      const m = $('#pmp') ? $('#pmp').value : P.id_mapel;
+      const m = $('#pmp') ? $('#pmp').value : P.id_mapel, pkk = ($('#pkel') || {}).value || '';
       sel.length = 0;
-      all.filter(s => s.status === 'Aktif' && (m === 'CAMPUR' || s.id_mapel === m)).forEach(s => { sel.push(s.id_soal); if (poinM[s.id_soal] === undefined) poinM[s.id_soal] = s.poin || 1; });
+      all.filter(s => s.status === 'Aktif' && (m === 'CAMPUR' || s.id_mapel === m) && (s.kelas_khusus || '') === pkk).forEach(s => { sel.push(s.id_soal); if (poinM[s.id_soal] === undefined) poinM[s.id_soal] = s.poin || 1; });
       drawPick(); drawSel();
     };
     if (!id) { autoPilih(); const pmpEl = $('#pmp'); if (pmpEl) pmpEl.addEventListener('change', autoPilih); }
+    const pkkEl = $('#pkel');
+    if (pkkEl) pkkEl.addEventListener('change', () => { for (let i = sel.length - 1; i >= 0; i--) { const so = all.find(x => x.id_soal === sel[i]); if (!so || (so.kelas_khusus || '') !== pkkEl.value) sel.splice(i, 1); } drawPick(); drawSel(); });
     else { drawPick(); drawSel(); }
     return () => { TKA._pf = null; };
   }
   inp.g_pf = U.debounce(el => { if (!TKA._pf) return; TKA._pf.PF[el.dataset.k] = el.value; TKA._pf.PF.lim = 60; TKA._pf.drawPick(); }, 150);
-  act.g_pmore = () => { if (!TKA._pf) return; TKA._pf.PF.lim += 60; TKA._pf.drawPick(); };
+  act.g_pmore = () => { TKA._pf.PF.lim += 60; TKA._pf.drawPick(); };
   act.g_ppick = el => {
-    const F = TKA._pf; if (!F) return;
-    const i = el.dataset.id, k = F.sel.indexOf(i);
+    const F = TKA._pf, i = el.dataset.id, k = F.sel.indexOf(i);
     if (el.checked && k < 0) { F.sel.push(i); if (F.poin[i] === undefined) { const so = (D.peek('soal') || []).filter(x => x.id_soal === i)[0]; F.poin[i] = so ? so.poin : 1; } }
     else if (!el.checked && k > -1) F.sel.splice(k, 1);
-    F.drawSel(); F.syncAll();
-  };
-  // "Pilih semua": berlaku untuk seluruh soal Aktif pada daftar yang sedang tampil (mengikuti pencarian & filter).
-  act.g_pall = el => {
-    const F = TKA._pf; if (!F) return;
-    const f = (F.PF.lastF || []).filter(s => s.status === 'Aktif');
-    if (el.checked) {
-      f.forEach(s => {
-        if (F.sel.indexOf(s.id_soal) > -1) return;
-        F.sel.push(s.id_soal);
-        if (F.poin[s.id_soal] === undefined) F.poin[s.id_soal] = s.poin || 1;
-      });
-    } else {
-      f.forEach(s => { const k = F.sel.indexOf(s.id_soal); if (k > -1) F.sel.splice(k, 1); });
-    }
-    F.drawPick(); F.drawSel();
+    F.drawSel();
   };
   inp.g_pp = el => { if (!TKA._pf) return; TKA._pf.poin[el.dataset.id] = el.value; const t = $('#ptot'); if (t) t.textContent = 'Total poin: ' + TKA._pf.totPoin(); };
-  act.g_prm = el => { const F = TKA._pf; if (!F) return; const k = F.sel.indexOf(el.dataset.id); if (k > -1) F.sel.splice(k, 1); F.drawSel(); F.drawPick(); };
-  const mv = (n, d) => { const F = TKA._pf; if (!F) return; const a = F.sel; const t = a[n]; a[n] = a[n + d]; a[n + d] = t; F.drawSel(); };
+  act.g_prm = el => { const F = TKA._pf, k = F.sel.indexOf(el.dataset.id); if (k > -1) F.sel.splice(k, 1); F.drawSel(); F.drawPick(); };
+  const mv = (n, d) => { const F = TKA._pf, a = F.sel; const t = a[n]; a[n] = a[n + d]; a[n + d] = t; F.drawSel(); };
   act.g_pup = el => mv(Number(el.dataset.n), -1); act.g_pdn = el => mv(Number(el.dataset.n), 1);
   act.g_psave = async el => {
     const F = TKA._pf; if (!F) return;
-    const body = { kelas_khusus: '', nama: $('#pnm').value, id_mapel: $('#pmp').value, jenis: $('#pjn').value, durasi: Number($('#pdr').value), kkm: Number($('#pkk').value), status: $('#pst').value, deskripsi: $('#pds').value, acak_soal: $('#pas').checked, acak_opsi: $('#pao').checked, daftar_soal: F.sel };
+    const body = { kelas_khusus: ($('#pkel') || {}).value || '', nama: $('#pnm').value, id_mapel: $('#pmp').value, jenis: $('#pjn').value, durasi: Number($('#pdr').value), kkm: Number($('#pkk').value), status: $('#pst').value, deskripsi: $('#pds').value, acak_soal: $('#pas').checked, acak_opsi: $('#pao').checked, daftar_soal: F.sel };
     body.poin = F.poin; body.pengaturan = pengBaca();
     if (F.id) body.id_paket = F.id;
     el.disabled = true;
@@ -572,7 +519,7 @@ act.g_ke_paket_baru = () => {
         for (let i = 0; i < first; i++) cells += '<div></div>';
         for (let d = 1; d <= days; d++) { const ev = list.filter(j => U.sama(j.mulai, new Date(y, m, d))); cells += '<div><b class="xs">' + d + '</b>' + ev.map(j => '<span class="ev" data-a="g_jedit" data-id="' + j.id_jadwal + '" title="' + esc(j.paket) + '">' + U.jam(j.mulai) + ' ' + esc(j.paket) + '</span>').join('') + '</div>'; }
         body = '<div class="card"><div class="row sp mb16"><button class="ibtn" data-a="g_jm" data-d="-1">' + I('chevron_left') + '</button><h4>' + ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][m] + ' ' + y + '</h4><button class="ibtn" data-a="g_jm" data-d="1">' + I('chevron_right') + '</button></div><div class="calwrap">' + cells + '</div></div>';
-      } else body = '<div class="card pad0">' + (list.length ? '<div class="tw"><table><thead><tr><th>Kode</th><th>Paket</th><th class="hm">Kelas</th><th>Waktu</th><th>Token</th><th>Status</th><th></th></tr></thead><tbody>' + list.map(j => { const s = stt(j); return '<tr><td class="mono sm">' + esc(j.kode) + '</td><td><b>' + esc(j.paket) + '</b>' + (j.jenis_soal === 'umum' ? ' ' + U.badge('Umum', 'info') : j.jenis_soal === 'khusus' ? ' ' + U.badge('Khusus', 'warn') : '') + '<div class="xs muted">' + esc(j.mapel) + ' · ' + j.jumlah_soal + ' soal · ' + j.durasi + ' mnt · pengawas ' + esc(j.pengawas_nama) + '</div></td><td class="sm hm">' + esc(j.kelas_nama.join(', ')) + '<div class="xs muted">' + j.peserta + ' siswa</div></td><td class="sm">' + U.tglJam(j.mulai) + '<div class="xs muted">s.d. ' + U.tglJam(j.selesai) + '</div></td><td><span class="mono b" style="letter-spacing:.12em">' + esc(j.token) + '</span> <button class="ibtn" data-a="copy" data-v="' + esc(j.token) + '" title="Salin token">' + I('content_copy', 'sm') + '</button></td><td>' + U.badge(s[0], s[1]) + '</td><td class="tr"><span class="acts"><button class="ibtn" data-a="g_khadir" data-id="' + j.id_jadwal + '" title="Kehadiran">' + I('how_to_reg') + '</button>' + (s[0] === 'Berlangsung' ? '<a class="ibtn" href="#/monitoring?j=' + j.id_jadwal + '" title="Pantau">' + I('monitor_heart') + '</a>' : '') + '<button class="ibtn" data-a="g_jedit" data-id="' + j.id_jadwal + '" title="Ubah">' + I('edit') + '</button><button class="ibtn dng" data-a="g_jdel" data-id="' + j.id_jadwal + '" title="Hapus">' + I('delete') + '</button></span></td></tr>'; }).join('') + '</tbody></table></div>' : U.empty('event', 'Belum ada jadwal', 'Jadwalkan paket resmi untuk kelas tertentu.', '<button class="btn mt16" data-a="g_jnew">Buat jadwal</button>')) + '</div>';
+      } else body = '<div class="card pad0">' + (list.length ? '<div class="tw"><table><thead><tr><th>Kode</th><th>Paket</th><th class="hm">Kelas</th><th>Waktu</th><th>Token</th><th>Status</th><th></th></tr></thead><tbody>' + list.map(j => { const s = stt(j); return '<tr><td class="mono sm">' + esc(j.kode) + '</td><td><b>' + esc(j.paket) + '</b><div class="xs muted">' + esc(j.mapel) + ' · ' + j.jumlah_soal + ' soal · ' + j.durasi + ' mnt · pengawas ' + esc(j.pengawas_nama) + '</div></td><td class="sm hm">' + esc(j.kelas_nama.join(', ')) + '<div class="xs muted">' + j.peserta + ' siswa</div></td><td class="sm">' + U.tglJam(j.mulai) + '<div class="xs muted">s.d. ' + U.tglJam(j.selesai) + '</div></td><td><span class="mono b" style="letter-spacing:.12em">' + esc(j.token) + '</span> <button class="ibtn" data-a="copy" data-v="' + esc(j.token) + '" title="Salin token">' + I('content_copy', 'sm') + '</button></td><td>' + U.badge(s[0], s[1]) + '</td><td class="tr"><span class="acts"><button class="ibtn" data-a="g_khadir" data-id="' + j.id_jadwal + '" title="Kehadiran">' + I('how_to_reg') + '</button>' + (s[0] === 'Berlangsung' ? '<a class="ibtn" href="#/monitoring?j=' + j.id_jadwal + '" title="Pantau">' + I('monitor_heart') + '</a>' : '') + '<button class="ibtn" data-a="g_jedit" data-id="' + j.id_jadwal + '" title="Ubah">' + I('edit') + '</button><button class="ibtn dng" data-a="g_jdel" data-id="' + j.id_jadwal + '" title="Hapus">' + I('delete') + '</button></span></td></tr>'; }).join('') + '</tbody></table></div>' : U.empty('event', 'Belum ada jadwal', 'Jadwalkan paket resmi untuk kelas tertentu.', '<button class="btn mt16" data-a="g_jnew">Buat jadwal</button>')) + '</div>';
       c.root.innerHTML = U.pageHead('Jadwal ujian', 'Atur kapan dan untuk kelas mana ujian dibuka.', '<div class="seg" style="width:200px"><button class="' + (jView === 'daftar' ? 'on' : '') + '" data-a="g_jv" data-v="daftar">Daftar</button><button class="' + (jView === 'kalender' ? 'on' : '') + '" data-a="g_jv" data-v="kalender">Kalender</button></div><button class="btn" data-a="g_jnew">' + I('add') + 'Buat jadwal</button>') + body;
     };
     c.root.innerHTML = U.skel(3, 70);
@@ -606,29 +553,19 @@ act.g_ke_paket_baru = () => {
   function tokenBaru() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
   function jForm(j) {
     const paket = (D.peek('paket') || []).filter(p => p.status === 'Terpublikasi' && p.jenis === 'Resmi'), kl = kelasUntukUser(), rg = M().ruang || [], now = Date.now(), jRuangAwal = !!(j && (j.ruang || []).length);
-   if (!paket.length && !j) return U.modal({title:'Belum ada paket resmi',
-  body: '<p>Buat paket berjenis <b>Ujian resmi</b> danpublikasikan terlebih dahulu, baru jadwal ujian dapat disusun.</p>',
-  footer: '<button class="btn sec" data-a="m_close">Tutup</button><button class="btn" data-a="g_ke_paket_baru">' + I('add') + 'Buat paket</button>'
-});
-    const jJenis = String((j && j.jenis_soal) || 'umum,khusus').split(',').filter(Boolean);
+    if (!paket.length && !j) return U.modal({ title: 'Belum ada paket resmi', body: '<p>Buat paket berjenis <b>Ujian resmi</b> dan publikasikan terlebih dahulu.</p>', footer: '<a class="btn" href="#/paket-ujian/baru" data-a="m_close">Buat paket</a>' });
     const start = j ? j.mulai : Math.ceil((now + 1800e3) / 900e3) * 900e3;
     const h = U.modal({ title: j ? 'Ubah jadwal' : 'Buat jadwal ujian', cls: 'wide', body: '<div class="col g16"><div class="field"><label>Paket ujian</label><select class="select" id="jpk">' + U.opt(paket.map(p => [p.id_paket, p.nama + ' (' + p.jumlah_soal + ' soal, ' + p.durasi + ' mnt)']), j ? j.id_paket : '', 'Pilih paket') + '</select></div>' +
-      '<div class="field"><label>Peserta ujian</label>' + (isAdmin() ? '<div class="row g8 mb8"><label class="chip' + (jRuangAwal ? '' : ' on') + '"><input type="radio" name="jmode" hidden value="kelas"' + (jRuangAwal ? '' : ' checked') + '>Per kelas</label><label class="chip' + (jRuangAwal ? ' on' : '') + '"><input type="radio" name="jmode" hidden value="ruang"' + (jRuangAwal ? ' checked' : '') + '>Per ruang</label></div>' : '') + '<div id="jgkelas" class="' + (jRuangAwal ? 'hide' : '') + '"><div class="chips" style="flex-wrap:wrap" id="jkl">' + kl.map(k => { const on = !!(j && (j.kelas || []).indexOf(k.id_kelas) > -1); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(k.id_kelas) + '"' + (on ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>'; }).join('') + '</div></div>' + (isAdmin() ? '<div id="jgruang" class="' + (jRuangAwal ? '' : 'hide') + '"><div class="chips" style="flex-wrap:wrap" id="jrg">' + rg.map(r => { const on = !!(j && (j.ruang || []).indexOf(r.id_ruang) > -1), kosong = !(r.siswa > 0); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(r.id_ruang) + '"' + (on ? ' checked' : '') + (kosong && !on ? ' disabled' : '') + '>' + esc(r.nama_ruang) + ' · ' + (r.siswa || 0) + ' siswa</label>'; }).join('') + '</div><span class="hint">Peserta adalah seluruh siswa di ruang yang dipilih. Ruang tanpa siswa tidak dapat dipilih.</span><div id="jprw" class="col g8" style="margin-top:12px"></div></div>' : '') +
-      '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><div class="xs b">Jenis soal</div><div class="row g8 wrap mt8">' +
-        '<label class="chip' + (jJenis.indexOf('umum') > -1 ? ' on' : '') + '"><input type="checkbox" hidden id="jju" value="umum"' + (jJenis.indexOf('umum') > -1 ? ' checked' : '') + '>Soal umum</label>' +
-        '<label class="chip' + (jJenis.indexOf('khusus') > -1 ? ' on' : '') + '"><input type="checkbox" hidden id="jjk" value="khusus"' + (jJenis.indexOf('khusus') > -1 ? ' checked' : '') + '>Kelas khusus</label>' +
-      '</div><span class="hint">Pilih salah satu atau keduanya. Bila keduanya: siswa dari kelas yang memiliki soal khusus hanya mengerjakan soal khusus kelasnya; siswa dari kelas lain mengerjakan soal umum.</span></div>' +
-      '</div>' +
+      '<div class="field"><label>Peserta ujian</label>' + (isAdmin() ? '<div class="row g8 mb8"><label class="chip' + (jRuangAwal ? '' : ' on') + '"><input type="radio" name="jmode" hidden value="kelas"' + (jRuangAwal ? '' : ' checked') + '>Per kelas</label><label class="chip' + (jRuangAwal ? ' on' : '') + '"><input type="radio" name="jmode" hidden value="ruang"' + (jRuangAwal ? ' checked' : '') + '>Per ruang</label></div>' : '') +'<div id="jgkelas" class="' + (jRuangAwal ? 'hide' : '') + '"><div class="chips" style="flex-wrap:wrap" id="jkl">' + kl.map(k => { const on = !!(j && (j.kelas || []).indexOf(k.id_kelas) > -1); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(k.id_kelas) + '"' + (on ? ' checked' : '') + '>' + esc(k.nama_kelas) + '</label>'; }).join('') + '</div></div>' +(isAdmin() ? '<div id="jgruang" class="' + (jRuangAwal ? '' : 'hide') + '"><div class="chips" style="flex-wrap:wrap" id="jrg">' + rg.map(r => { const on = !!(j && (j.ruang || []).indexOf(r.id_ruang) > -1), kosong = !(r.siswa > 0); return '<label class="chip' + (on ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(r.id_ruang) + '"' + (on ? ' checked' : '') + (kosong && !on ? ' disabled' : '') + '>' + esc(r.nama_ruang) + ' · ' + (r.siswa || 0) + ' siswa</label>'; }).join('') + '</div><span class="hint">Peserta adalah seluruh siswa di ruang yang dipilih. Ruang tanpa siswa tidak dapat dipilih.</span><div id="jprw" class="col g8" style="margin-top:12px"></div></div>' : '') + '</div>' +
       '<div class="grid g2"><div class="field"><label>Mulai dibuka</label><input type="datetime-local" class="input" id="jmu" value="' + U.toInput(start) + '"></div><div class="field"><label>Ditutup</label><input type="datetime-local" class="input" id="jse" value="' + U.toInput(j ? j.selesai : start + 3 * 3600e3) + '"></div></div>' +
       '<div class="grid g2"><div class="field"><label>Token sesi</label><div class="hint" style="padding-top:10px">Token berganti otomatis setiap 15 menit dan ditampilkan di kartu Jadwal pengawasan.</div></div>' + (isAdmin() ? '<div class="field"><label>Pengawas</label><div class="chips" style="flex-wrap:wrap" id="jpgw"></div><span class="hint">Guru ruang otomatis dicentang saat ruang dipilih. Anda dapat mengubahnya.</span></div>' : '') + '</div>' +
       '<div class="alert info">' + I('info') + '<span>Siswa mengerjakan selama durasi paket, tetapi tidak melewati waktu ditutup.</span></div></div>', footer: '<button class="btn sec" data-a="m_close">Batal</button><button class="btn" data-a="g_jsave">' + I('save') + 'Simpan</button>' });
     h.el.querySelectorAll('#jkl input').forEach(i => i.addEventListener('change', () => i.parentElement.classList.toggle('on', i.checked)));
-    h.el.querySelectorAll('#jju,#jjk').forEach(i => i.addEventListener('change', () => i.parentElement.classList.toggle('on', i.checked)));
     h.el.querySelectorAll('#jrg input').forEach(i => i.addEventListener('change', () => { i.parentElement.classList.toggle('on', i.checked); prRender(); }));
     h.el.querySelectorAll('input[name=jmode]').forEach(i => i.addEventListener('change', () => {
       const ruang = i.value === 'ruang' && i.checked;
       h.el.querySelector('#jgkelas').classList.toggle('hide', ruang);
-      const gr = h.el.querySelector('#jgruang'); if (gr) gr.classList.toggle('hide', !ruang);
+      h.el.querySelector('#jgruang').classList.toggle('hide', !ruang);
       const pgF = h.el.querySelector('#jpgw'); if (pgF) pgF.closest('.field').classList.toggle('hide', ruang);
       prRender();
       h.el.querySelectorAll('input[name=jmode]').forEach(x => x.parentElement.classList.toggle('on', x.checked));
@@ -640,7 +577,22 @@ act.g_ke_paket_baru = () => {
       w.innerHTML = (D.peek('users') || []).filter(u => u.peran !== 'siswa').map(u => '<label class="chip' + (sel.indexOf(u.id) > -1 ? ' on' : '') + '"><input type="checkbox" hidden value="' + esc(u.id) + '"' + (sel.indexOf(u.id) > -1 ? ' checked' : '') + '>' + esc(u.nama) + '</label>').join('');
       w.querySelectorAll('input').forEach(i => i.addEventListener('change', () => i.parentElement.classList.toggle('on', i.checked)));
     };
-    { const pgF0 = h.el.querySelector('#jpgw'); if (pgF0) pgF0.closest('.field').classList.toggle('hide', jRuangAwal); }
+    const pgAuto = () => {
+      const w = h.$('#jpgw'); if (!w) return;
+      U.$$('#jrg input:checked', h.el).forEach(i => {
+        const r = rg.find(x => x.id_ruang === i.value);
+        ((r && r.guru) || []).forEach(id => { const c = w.querySelector('input[value="' + id + '"]'); if (c && !c.checked) { c.checked = true; c.parentElement.classList.add('on'); } });
+      });
+    };
+    // Paket khusus kelas: hanya kelas peruntukannya yang bisa dipilih
+    const kelasPaketTerapkan = () => {
+      const jp = h.el.querySelector('#jpk');
+      const pk = jp && (D.peek('paket') || []).find(x => x.id_paket === jp.value);
+      const kh = pk && pk.kelas_khusus;
+      U.$$('#jkl input', h.el).forEach(i => { if (kh) { i.checked = i.value === kh; i.disabled = i.value !== kh; } else i.disabled = false; i.parentElement.classList.toggle('on', i.checked); });
+    };
+    const jpkEl = h.el.querySelector('#jpk');
+    if (jpkEl) { jpkEl.addEventListener('change', kelasPaketTerapkan); kelasPaketTerapkan(); }
     // Pengawas per ruang: maks. 2 per ruang, satu orang tidak boleh bertugas di dua ruang
     const prState = {};
     const prAwal = (j && j.pengawas_ruang) || {};
@@ -670,14 +622,13 @@ act.g_ke_paket_baru = () => {
         prState[id] = lst; prRender();
       }));
     };
+    { const pgF0 = h.el.querySelector('#jpgw'); if (pgF0) pgF0.closest('.field').classList.toggle('hide', jRuangAwal); }
     if (isAdmin()) { pgIsi(); if (!(D.peek('users') || []).length) D.fetch('users').then(() => { pgIsi(); prRender(); }); }
     prRender();
   }
   act.g_jsave = async el => {
     const h = TKA._jh; if (!h) return;
-    const jenis = U.$$('#jju:checked,#jjk:checked', h.el).map(i => i.value);
-    if (!jenis.length) return U.toast('Pilih minimal satu jenis soal: Umum atau Kelas khusus.', 'warn');
-    const body = { id_paket: $('#jpk').value, jenis_soal: jenis, mode: (TKA._jh && TKA._jh.el.querySelector('input[name=jmode]:checked') || { value: 'kelas' }).value, kelas: U.$$('#jkl input:checked').map(i => i.value), ruang: U.$$('#jrg input:checked').map(i => i.value), mulai: U.fromInput($('#jmu').value), selesai: U.fromInput($('#jse').value) };
+    const body = { id_paket: $('#jpk').value, mode: (TKA._jh && TKA._jh.el.querySelector('input[name=jmode]:checked') || { value: 'kelas' }).value, kelas: U.$$('#jkl input:checked').map(i => i.value), ruang: U.$$('#jrg input:checked').map(i => i.value), mulai: U.fromInput($('#jmu').value), selesai: U.fromInput($('#jse').value) };
     if (body.mode === 'ruang') { body.pengawas_ruang = {}; U.$$('#jrg input:checked', h.el).forEach(i => { body.pengawas_ruang[i.value] = ((h.prState || {})[i.value] || []).slice(); }); }
     else if (h.el.querySelector('#jpgw')) body.pengawas = U.$$('#jpgw input:checked', h.el).map(i => i.value);
     if (h.jid) body.id_jadwal = h.jid;
@@ -746,12 +697,10 @@ act.g_ke_paket_baru = () => {
     (data.kelas_catatan || []).forEach(k => { origC[k.id_kelas] = { tertib: k.tertib, lancar: k.lancar, catatan: k.catatan }; curC[k.id_kelas] = Object.assign({}, origC[k.id_kelas]); });
     const pilihan = nilai => '<option value="">— Belum diisi —</option>' + data.status.map(x => '<option value="' + x + '"' + (x === nilai ? ' selected' : '') + '>' + x + '</option>').join('');
     const opsiNilai = (daftar, nilai) => '<option value="">— Belum diisi —</option>' + daftar.map(x => '<option value="' + x + '"' + (x === nilai ? ' selected' : '') + '>' + x + '</option>').join('');
-    const formKelas = (data.kelas_catatan || []).length ? (data.kelas_catatan || []).map(k =>
-      '<div class="card flat mb8" data-kc="' + esc(k.id_kelas) + '"><h4 class="mb8">' + esc(k.nama) + '</h4>' +
-      '<div class="grid" style="grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Ketertiban</label><select class="select" data-kt="tertib">' + opsiNilai(['Baik', 'Cukup', 'Kurang'], k.tertib) + '</select></div>' +
-      '<div class="field"><label>Kelancaran</label><select class="select" data-kt="lancar">' + opsiNilai(['Baik', 'Cukup', 'Kurang'], k.lancar) + '</select></div></div>' +
-      '<div class="field"><label>Catatan (opsional)</label><textarea class="textarea" rows="2" data-kt="catatan" placeholder="Mis. ada gangguan jaringan di ruang 2">' + esc(k.catatan) + '</textarea></div></div>').join('')
-      : '<p class="sm muted">Jadwal ini belum punya kelas.</p>';
+    const kcl = (data.kelas_catatan || [])[0] || { id_kelas: '*', tertib: '', lancar: '', catatan: '' };
+    const formKelas = '<div class="kh-form" data-kc="*"><div class="kh-grid2"><div class="kh-field"><label>Ketertiban</label><select class="kh-sel" data-kt="tertib">' + opsiNilai(['Baik', 'Cukup', 'Kurang'], kcl.tertib) + '</select></div>' +
+      '<div class="kh-field"><label>Kelancaran</label><select class="kh-sel" data-kt="lancar">' + opsiNilai(['Baik', 'Cukup', 'Kurang'], kcl.lancar) + '</select></div></div>' +
+      '<div class="kh-field"><label>Catatan (opsional)</label><textarea class="kh-ta" rows="2" data-kt="catatan" placeholder="Mis. ada gangguan jaringan di ruang 2">' + esc(kcl.catatan) + '</textarea></div></div>';
     const ringkas = () => {
       const hitung = {};
       data.status.forEach(x => { hitung[x] = 0; });
@@ -759,7 +708,7 @@ act.g_ke_paket_baru = () => {
       const belum = Object.keys(cur).filter(id => !cur[id]).length;
       return data.status.map(x => U.badge(x + ' ' + hitung[x], KH_WARNA[x])).join(' ') + ' ' + U.badge('Belum diisi ' + belum, 'neu');
     };
-    const baris = data.siswa.length ? data.siswa.map((s, i) => '<tr><td class="sm muted">' + (i + 1) + '</td><td><b>' + esc(s.nama) + '</b><div class="xs muted mono">' + esc(s.username) + ' · ' + esc(s.kelas) + '</div></td><td><select class="select" data-kh="' + esc(s.id) + '">' + pilihan(s.status || '') + '</select></td></tr>').join('')
+    const baris = data.siswa.length ? data.siswa.map((s, i) => '<tr><td class="sm muted">' + (i + 1) + '</td><td><b>' + esc(s.nama) + '</b><div class="xs muted mono">' + esc(s.username) + ' · ' + esc(s.kelas) + '</div></td><td><select class="kh-sel" data-kh="' + esc(s.id) + '">' + pilihan(s.status || '') + '</select></td></tr>').join('')
       : '<tr><td colspan="3" class="sm muted">Belum ada siswa di kelas jadwal ini.</td></tr>';
     const ttdHtml = (data.ttd_kunci || []).length ? (data.ttd_kunci || []).map(kn => {
       const sudah = (data.ttd || []).filter(t => t.kunci === kn.kunci);
@@ -773,12 +722,14 @@ act.g_ke_paket_baru = () => {
       return '<div class="card flat mb8"><div class="row sp"><b>' + esc(kn.label) + '</b><span class="xs muted">' + sudah.length + ' dari 2 penandatangan</span></div>' +
         (slot ? '<div class="ttd-row">' + slot + '</div>' : '<p class="xs muted">Belum ada tanda tangan.</p>') + pad + '</div>';
     }).join('') : '<p class="sm muted">Belum ada ruang atau kelas untuk ditandatangani.</p>';
-    const body = '<div class="sm b mb8">' + U.tglJam(j.mulai) + ' · ' + esc(j.kelas_nama.join(', ')) + '</div>' +
-      '<div class="row wrap g8 mb16" id="khRingkas">' + ringkas() + '</div>' +
-      '<div class="tw" style="max-height:44vh;overflow:auto"><table><thead><tr><th>No</th><th>Siswa</th><th>Kehadiran</th></tr></thead><tbody>' + baris + '</tbody></table></div>' +
-      '<h4 class="mt16 mb8">Tertib dan lancar ujian</h4>' + formKelas + '<h4 class="mt16 mb8">Tanda tangan digital</h4>' + ttdHtml;
-    const footer = '<button class="btn ghost" id="khIsi" type="button">Isi yang kosong dengan Hadir</button><span class="grow"></span><button class="btn sec" data-a="m_close" type="button">Batal</button><button class="btn" id="khSimpan" type="button">' + I('save') + 'Simpan kehadiran</button>';
-    const h = U.modal({ title: 'Kehadiran · ' + j.paket, sub: esc(j.kode), body: body, footer: footer });
+    const body = '<div class="kh-wrap"><div class="kh-hero"><div class="kh-hero-ic">' + I('how_to_reg') + '</div><div><div class="kh-hero-k">Daftar hadir</div>' +
+      '<div class="kh-hero-t">' + esc(j.paket) + '</div><div class="kh-hero-s">' + U.tglJam(j.mulai) + ' · ' + esc(j.kelas_nama.join(', ')) + '</div></div></div>' +
+      '<div class="row wrap kh-chips" id="khRingkas">' + ringkas() + '</div>' +
+      '<div class="kh-card"><div class="kh-sec">Kehadiran siswa</div><div class="kh-tw"><table class="kh-tbl"><thead><tr><th>No</th><th>Siswa</th><th>Kehadiran</th></tr></thead><tbody>' + baris + '</tbody></table></div></div>' +
+      '<div class="kh-card"><div class="kh-sec">Tertib, kelancaran &amp; catatan</div>' + formKelas + '</div>' +
+      '<div class="kh-card"><div class="kh-sec">Tanda tangan digital</div>' + ttdHtml + '</div></div>';
+    const footer = '<button class="kh-ghost" id="khIsi" type="button">Isi yang kosong dengan Hadir</button><span class="grow"></span><button class="kh-ghost" data-a="m_close" type="button">Batal</button><button class="kh-pill" id="khSimpan" type="button">' + I('save') + 'Simpan kehadiran</button>';
+    const h = U.modal({ title: 'Daftar hadir', sub: esc(j.kode), body: body, footer: footer });
     const refresh = () => { h.$('#khRingkas').innerHTML = ringkas(); };
     // ---- Tanda tangan: kanvas per ruang/kelas (hanya untuk penandatangan yang berhak) ----
     const ttdInk = {}, ttdDirty = new Set();
