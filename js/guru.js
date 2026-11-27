@@ -36,7 +36,8 @@
   // ---- Dashboard guru: Jadwal pengawasan (ruang, tanggal, waktu, mapel, daftar hadir) ----
   const TGL_PANJANG = ms => new Date(ms).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   async function pengawasanHtml() {
-    const jdOn = !(S.setting && S.setting.menu_jadwal_guru === '0');
+    const jdOn = !TKA.menuGuruOff('menu_jadwal_guru');
+    if (!jdOn) return '';
     const now = A.now(), saya = S.user.id, awal = new Date(now); awal.setHours(0, 0, 0, 0);
     const list = ((S.boot && S.boot.jadwal) || []).filter(j => (j.pengawas || []).indexOf(saya) > -1 && j.selesai >= awal.getTime())
       .sort((a, b) => a.mulai - b.mulai).slice(0, 6);
@@ -83,11 +84,11 @@
       c.root.innerHTML = U.pageHead('Halo, ' + esc(String(S.user.nama).split(',')[0]), 'Ringkasan bank soal, jadwal, dan hasil ujian.') +
         '<div id="dpw-kartu">' + pwSplit[0] + '</div>' +
         '<div class="grid gs4 mb16 statrow">' + U.stat('quiz', U.rb(st.soal || 0), 'Total soal' + (st.draft ? ' · ' + st.draft + ' draf' : '')) + U.stat('inventory_2', st.paket || 0, 'Paket terpublikasi') + U.stat('monitor_heart', st.berlangsung || 0, 'Ujian berlangsung', st.berlangsung ? 'ok' : '') + U.stat('analytics', st.rata || 0, 'Rata-rata skor (' + (st.selesai || 0) + ' hasil)', 'warn') + '</div>' +
-        '<div class="card pad0"><div class="card-h"><h3>Ujian terdekat</h3><a class="sm b" href="#/jadwal">Semua jadwal →</a></div>' +
+        (TKA.menuGuruOff('menu_jadwal_guru') ? '' : '<div class="card pad0"><div class="card-h"><h3>Ujian terdekat</h3><a class="sm b" href="#/jadwal">Semua jadwal →</a></div>' +
         (jd.length ? '<div class="tw"><table><thead><tr><th>Kode</th><th>Paket</th><th class="hm">Kelas</th><th>Waktu</th><th>Token</th><th>Status</th><th></th></tr></thead><tbody>' + jd.map(j => {
           const live = j.mulai <= now && now <= j.selesai;
           return '<tr><td class="mono sm">' + esc(j.kode) + '</td><td><b>' + esc(j.paket) + '</b><div class="xs muted">' + esc(j.mapel) + '</div></td><td class="sm hm">' + esc(j.kelas_nama.join(', ')) + '</td><td class="sm">' + U.tglJam(j.mulai) + '<div class="xs muted">s.d. ' + U.jam(j.selesai) + '</div></td><td><span class="mono b">' + esc(j.token) + '</span></td><td>' + (live ? U.badge('Berlangsung', 'ok') : U.badge('Terjadwal', 'info')) + '</td><td class="tr">' + (live ? '<a class="btn sm" href="#/monitoring?j=' + j.id_jadwal + '">Pantau</a>' : '') + '</td></tr>';
-        }).join('') + '</tbody></table></div>' : U.empty('event_available', 'Belum ada jadwal mendatang', 'Buat jadwal agar siswa dapat mengerjakan simulasi.', '<a class="btn mt16" href="#/jadwal?baru=1">Buat jadwal</a>')) + '</div>' + '<div id="dpw-daftar">' + (pwSplit[1] || '') + '</div>';
+        }).join('') + '</tbody></table></div>' : U.empty('event_available', 'Belum ada jadwal mendatang', 'Buat jadwal agar siswa dapat mengerjakan simulasi.', '<a class="btn mt16" href="#/jadwal?baru=1">Buat jadwal</a>')) + '</div>') + '<div id="dpw-daftar">' + (pwSplit[1] || '') + '</div>';
     };
     draw();
     pwRender();
@@ -97,7 +98,7 @@
 
   // ============================================================ BANK SOAL
   const SF = { q: '', mapel: '', kes: '', status: '', page: 1, sel: new Set() };
-  function tabs(on) { return '<div class="tabs mb16"><a class="tab' + (on === 'soal' ? ' on' : '') + '" href="#/soal">Bank soal</a><a class="tab' + (on === 'paket' ? ' on' : '') + '" href="#/paket-ujian">Paket ujian</a></div>'; }
+  function tabs(on) { const pk = !TKA.menuGuruOff('menu_paket_guru'); return '<div class="tabs mb16"><a class="tab' + (on === 'soal' ? ' on' : '') + '" href="#/soal">Bank soal</a>' + (pk ? '<a class="tab' + (on === 'paket' ? ' on' : '') + '" href="#/paket-ujian">Paket ujian</a>' : '') + '</div>'; }
   TKA.route(ST, 'soal', function (c) {
     c.live();
     let list = [];
@@ -192,7 +193,11 @@ act.g_ke_paket_baru = () => {
   // Mata pelajaran paket: guru yang sudah diatur mapelnya oleh admin hanya melihat mapel miliknya (dikunci jika hanya satu).
   function paketMapelSelect(nilai) {
     const ms = String((S.boot && S.boot.profil && S.boot.profil.mapel) || '').split(',').filter(Boolean);
-    if (S.user.peran === 'admin' || !ms.length) return '<select class="select" id="pmp">' + U.opt([['CAMPUR', 'Campuran']].concat(mapelOpt()), nilai) + '</select>';
+    if (S.user.peran === 'admin') {
+      const lama = nilai === 'CAMPUR' ? [['CAMPUR', 'Campuran (paket lama)']] : [];
+      return '<select class="select" id="pmp">' + U.opt(lama.concat(mapelOpt()), nilai) + '</select>';
+    }
+    if (!ms.length) return '<select class="select" id="pmp">' + U.opt([['CAMPUR', 'Campuran']].concat(mapelOpt()), nilai) + '</select>';
     const opsi = mapelOpt().filter(m => ms.indexOf(m[0]) > -1);
     const pilih = opsi.some(m => m[0] === nilai) ? nilai : (opsi[0] ? opsi[0][0] : '');
     const kunci = opsi.length === 1;
@@ -423,7 +428,7 @@ act.g_ke_paket_baru = () => {
   TKA.route(ST, 'paket-ujian/:id', c => paketForm(c, c.params.id));
   async function paketForm(c, id, dup) {
     c.root.innerHTML = '<div class="card">' + U.skel(3, 80) + '</div>';
-    const P = { nama: '', id_mapel: 'CAMPUR', durasi: 90, kkm: (function () { const k = Number(S.setting.kkm_default); return k >= 0 && k <= 100 ? k : 76; })(), jenis: 'Latihan', status: 'Draft', acak_soal: true, acak_opsi: false, deskripsi: '', daftar_soal: [] };
+    const P = { nama: '', id_mapel: (S.user.peran === 'admin' ? ((M().mapel[0] || {}).id_mapel || '') : 'CAMPUR'), durasi: 90, kkm: (function () { const k = Number(S.setting.kkm_default); return k >= 0 && k <= 100 ? k : 76; })(), jenis: 'Latihan', status: 'Draft', acak_soal: true, acak_opsi: false, deskripsi: '', daftar_soal: [] };
     try {
       if (id || dup) { const j = await A.call('paket.get', { id_paket: id || dup }, { read: true }); Object.assign(P, j.paket); if (dup) { P.nama = P.nama + ' (salinan)'; P.status = 'Draft'; delete P.id_paket; } }
       await D.swr('soal', () => {}, 60000);

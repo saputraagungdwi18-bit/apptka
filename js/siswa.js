@@ -251,7 +251,8 @@
       return '<div class="row sp"><h4>Navigasi soal</h4><span class="sm muted">' + ct.a + '/' + N + '</span></div>' + U.bar(N ? 100 * ct.a / N : 0, 'ok') + grid +
         '<div class="leg"><span><i style="background:var(--success)"></i>Dijawab</span><span><i></i>Belum</span><span><i style="background:var(--secondary)"></i>Ragu-ragu</span></div>' +
         '<div class="row sp sm mt16"><span class="muted">Terjawab</span><b>' + ct.a + '</b></div><div class="row sp sm"><span class="muted">Ragu-ragu</span><b>' + ct.r + '</b></div><div class="row sp sm"><span class="muted">Belum dijawab</span><b>' + ct.k + '</b></div>' +
-        '<button class="btn block mt16" data-a="x_finish">' + I('task_alt') + 'Selesai & Kumpulkan</button>';
+        (ct.k ? '<p class="sm muted mt16 tc">Belum bisa dikumpulkan. Masih ada ' + ct.k + ' soal belum dijawab.</p>' : '') +
+        '<button class="btn block mt16" data-a="x_finish"' + (ct.k ? ' disabled' : '') + '>' + I('task_alt') + 'Selesai & Kumpulkan</button>';
     }
     function render() {
       const s = soal[X.idx], sel = X.jw[s.id], fl = X.ragu.has(s.id);
@@ -264,7 +265,7 @@
       q('#exnav').innerHTML = renderNav();
       q('#xprev').disabled = X.idx === 0 || !cfg.nav;
       const last = X.idx === N - 1, nx = q('#xnext');
-      nx.setAttribute('data-a', last ? 'x_finish' : 'x_next'); nx.innerHTML = '<span>' + (last ? 'Selesai' : 'Berikutnya') + '</span>' + I(last ? 'task_alt' : 'chevron_right');
+      nx.setAttribute('data-a', last ? 'x_finish' : 'x_next'); nx.disabled = last && counts().k > 0; nx.innerHTML = '<span>' + (last ? 'Selesai' : 'Berikutnya') + '</span>' + I(last ? 'task_alt' : 'chevron_right');
       q('#xprog').textContent = counts().a + ' dari ' + N + ' terjawab';
       const fm = q('#xflagm'); if (fm) fm.classList.toggle('on', fl);
       q('#exq').scrollTop = 0;
@@ -378,6 +379,7 @@
       x_grid: () => { const h = U.modal({ sheet: true, title: 'Navigasi soal', body: renderNav() }); h.sheet = true; },
       x_finish: () => {
         const ct = counts();
+        if (ct.k > 0) { U.toast('Belum bisa dikumpulkan. Masih ada ' + ct.k + ' soal belum dijawab.', 'warn', 4000); return; }
         const h = U.modal({ title: 'Kumpulkan ujian?', body: '<div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px"><div class="card flat tc"><div class="bb" style="font-size:24px;color:var(--success)">' + ct.a + '</div><div class="xs muted">Terjawab</div></div><div class="card flat tc"><div class="bb" style="font-size:24px;color:var(--secondary-d)">' + ct.r + '</div><div class="xs muted">Ragu-ragu</div></div><div class="card flat tc"><div class="bb" style="font-size:24px;color:var(--muted)">' + ct.k + '</div><div class="xs muted">Belum dijawab</div></div></div><div class="alert warn mt16">' + I('warning') + '<span>Jawaban tidak dapat diubah setelah dikumpulkan.</span></div>',
           footer: '<button class="btn sec" data-a="m_close">Kembali ke ujian</button><button class="btn" data-a="x_submit">Kumpulkan</button>' });
       },

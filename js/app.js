@@ -111,6 +111,9 @@
   }
 
   // ------------------------------------------------------------ kerangka
+  // Saklar menu guru (Pengaturan Sistem → Menu guru). Nilai '0' = nonaktif.
+  const MENU_GURU = { 'paket-ujian': 'menu_paket_guru', 'jadwal': 'menu_jadwal_guru', 'pengawasan': 'menu_jadwal_guru', 'soal': 'menu_soal_guru' };
+  TKA.menuGuruOff = function (key) { return !!(key && S.user && S.user.peran === 'guru' && S.setting && String(S.setting[key]) === '0'); };
   const NAV = {
     siswa: [['beranda', 'home', 'Beranda'], ['paket', 'assignment', 'Daftar Paket'], ['riwayat', 'history', 'Riwayat'], ['bantuan', 'help', 'Bantuan']],
     guru: [['dashboard', 'dashboard', 'Dashboard'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis']],
@@ -173,7 +176,9 @@
     const m = match(S.user.peran, path) || match(S.user.peran, S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
     ensureShell();
     const sec = (path.split('/')[0]) || (S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
+    if (S.user.peran === 'guru' && TKA.menuGuruOff(MENU_GURU[sec])) { location.replace('#/dashboard'); return; }
     U.$$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === sec || (sec === 'hasil' && a.dataset.nav === 'riwayat')));
+    if (S.user.peran === 'guru') U.$$('[data-nav]').forEach(a => { a.style.display = TKA.menuGuruOff(MENU_GURU[a.dataset.nav]) ? 'none' : ''; });
     const side = $('#side'); if (side) { side.classList.remove('open'); $('#scrim').classList.remove('open'); }
     const root = $('#view'); root.dataset.live = '';
     if (!m.def.full) window.scrollTo(0, 0);

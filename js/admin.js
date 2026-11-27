@@ -253,9 +253,33 @@
     TKA.fotoModal(u, u.id === S.user.id, () => { D.invalidate('users'); refreshUsers().catch(() => {}); });
   };
 
-  const TABS = [['umum', 'Identitas', 'badge'], ['ujian', 'Kebijakan ujian', 'rule'], ['aman', 'Keamanan', 'shield'], ['menu', 'Menu guru', 'toggle_on'], ['sistem', 'Sistem & kuota', 'dns'], ['audit', 'Log audit', 'history']];
+  // Laporan kehadiran pengawas: pengawas bertanda tangan = hadir
+  function renderPengawas(pw) {
+    if (pw && pw.error) return '<div class="card">' + U.empty('error', 'Laporan belum bisa dimuat', pw.error + ' Biasanya server belum diperbarui: tempel ulang Kode.gs dan Admin.gs dari versi terbaru ke Apps Script, lalu Terapkan → Kelola deployment → ✏ → Versi baru → Terapkan. Setelah itu, tekan Segarkan.', '<button class="btn sec sm mt16" data-a="a_pw_refresh">' + I('refresh', 'sm') + 'Coba lagi</button>') + '</div>';
+    if (!pw) return '<div class="card">' + U.skel(3, 36) + '</div>';
+    const jd = pw.jadwal || [];
+    if (!jd.length) return '<div class="card">' + U.empty('event_busy', 'Belum ada jadwal ujian', 'Buat jadwal ujian dan tetapkan pengawas agar laporan ini terisi.') + '</div>';
+    const sel = '<select class="input" data-i="a_pw_j" aria-label="Pilih jadwal" style="max-width:100%">' +
+      jd.map(j => '<option value="' + esc(j.id_jadwal) + '"' + (j.id_jadwal === pw.id_jadwal ? ' selected' : '') + '>' + esc(j.kode) + ' · ' + esc(j.paket) + ' · ' + U.tgl(j.mulai) + ' ' + U.jam(j.mulai) + '</option>').join('') + '</select>';
+    const b = pw.baris || [];
+    const hitung = b.filter(x => !x.belum_ditugaskan), sudah = hitung.filter(x => x.hadir).length;
+    const baris = b.map((x, i) => '<tr><td class="sm muted">' + (i + 1) + '</td>' +
+      '<td><b>' + (x.belum_ditugaskan ? '<span class="muted">Belum ada pengawas</span>' : esc(x.nama)) + '</b></td>' +
+      '<td>' + esc(x.ruang) + '</td>' +
+      '<td>' + (x.belum_ditugaskan ? U.badge('Belum ditugaskan', 'neu')
+        : x.hadir ? '<span class="badge ok">' + I('check_circle', 'sm') + ' Hadir</span>'
+        : '<span class="badge bad">' + I('radio_button_unchecked', 'sm') + ' Belum hadir</span>') + '</td>' +
+      '<td class="sm hm">' + (x.hadir ? U.tglJam(x.waktu) : '-') + '</td></tr>').join('');
+    return '<div class="row sp wrap mb16" style="gap:10px">' + sel + '<button class="btn sec sm" data-a="a_pw_refresh">' + I('refresh', 'sm') + 'Segarkan</button></div>' +
+      '<div class="grid gs4 mb16 statrow">' + U.stat('groups', hitung.length, 'Pengawas ditugaskan') + U.stat('check_circle', sudah, 'Hadir (tanda tangan)', 'ok') + U.stat('radio_button_unchecked', hitung.length - sudah, 'Belum hadir', 'warn') + '</div>' +
+      (b.length ? '<div class="tw"><table><thead><tr><th>No</th><th>Nama guru</th><th>Ruang</th><th>Status kehadiran</th><th class="hm">Waktu tanda tangan</th></tr></thead><tbody>' + baris + '</tbody></table></div>'
+        : U.empty('supervisor_account', 'Belum ada pengawas', 'Tetapkan pengawas pada jadwal ini.')) +
+      '<p class="xs muted mt16">Status hadir mengikuti tanda tangan pengawas. Halaman diperbarui otomatis setiap 20 detik.</p>';
+  }
+
+  const TABS = [['umum', 'Identitas', 'badge'], ['ujian', 'Kebijakan ujian', 'rule'], ['aman', 'Keamanan', 'shield'], ['menu', 'Menu guru', 'toggle_on'], ['pengawas', 'Laporan pengawas', 'supervisor_account'], ['sistem', 'Sistem & kuota', 'dns'], ['audit', 'Log audit', 'history']];
   TKA.route('admin', 'pengaturan', function (c) {
-    let tab = c.q.get('t') || 'umum', val = null, info = null, logs = null;
+    let tab = c.q.get('t') || 'umum', val = null, info = null, logs = null, pw = null, pwTimer = null;
     const T = (k, l, tip) => '<div class="field"><label>' + l + '</label><input class="input" data-i="a_sv" data-ev="input" data-k="' + k + '" value="' + esc(val[k]) + '">' + (tip ? '<span class="hint">' + tip + '</span>' : '') + '</div>';
     const N = (k, l, tip, mn, mx) => '<div class="field"><label>' + l + '</label><input class="input" type="number" min="' + mn + '" max="' + mx + '" step="any" data-i="a_sv" data-ev="input" data-k="' + k + '" value="' + esc(val[k]) + '">' + (tip ? '<span class="hint">' + tip + '</span>' : '') + '</div>';
     const SW = (k, l, tip) => '<label class="row g12" style="align-items:flex-start"><span class="sw" style="margin-top:2px"><input type="checkbox" data-i="a_sv" data-k="' + k + '"' + (val[k] === '1' ? ' checked' : '') + '><i></i></span><span><b class="sm">' + l + '</b><br><span class="xs muted">' + tip + '</span></span></label>';
@@ -272,11 +296,12 @@
           '<span class="hint">Admin tetap dapat mengelola semua menu. Perubahan berlaku setelah disimpan.</span></div>';
       }
       if (tab === 'sistem') return info ? '<div class="col g16"><div class="row sp sm"><span class="muted">Versi aplikasi</span><b>' + esc(info.versi) + '</b></div><div class="row sp sm"><span class="muted">Spreadsheet database</span><span><span class="mono">' + esc(info.spreadsheet_id) + '</span> ' + (info.spreadsheet_url ? '<a class="b" target="_blank" rel="noopener" href="' + esc(info.spreadsheet_url) + '">Buka ↗</a>' : '') + '</span></div><div class="row sp sm"><span class="muted">Akses darurat</span>' + U.badge(info.darurat ? 'Terkonfigurasi' : 'Belum', info.darurat ? 'ok' : 'warn') + '</div><div class="row sp sm"><span class="muted">Eksekusi hari ini (perkiraan)</span><b>' + U.rb((S.boot.sistem || {}).eksekusi_hari_ini || 0) + '</b></div><hr style="border:0;border-top:1px solid var(--line);width:100%"><div class="row g8 wrap"><button class="btn sec" data-a="a_cache" data-o="warmup">' + I('local_fire_department') + 'Panaskan cache</button><button class="btn dsec" data-a="a_cache" data-o="flush">' + I('delete_sweep') + 'Kosongkan cache</button></div><p class="xs muted">Cache dikosongkan bila Anda mengubah data langsung di Google Sheets. Rahasia (kunci sesi, sandi darurat) hanya ada di Script Properties dan tidak pernah tampil di sini.</p></div>' : U.skel(3, 36);
+      if (tab === 'pengawas') return renderPengawas(pw);
       if (tab === 'audit') return logs ? (logs.length ? '<div class="tw"><table><thead><tr><th>Waktu</th><th>Pengguna</th><th>Aksi</th><th>Detail</th></tr></thead><tbody>' + logs.map(l => '<tr><td class="sm" style="white-space:nowrap">' + U.tglJam(l.ts) + '</td><td class="sm"><b>' + esc(l.user) + '</b> <span class="muted">' + esc(l.peran) + '</span></td><td><span class="badge neu">' + esc(l.aksi) + '</span></td><td class="xs muted mono" style="max-width:360px;overflow-wrap:anywhere">' + esc(l.detail) + '</td></tr>').join('') + '</tbody></table></div>' : U.empty('history', 'Belum ada catatan')) : U.skel(4, 36);
       return '';
     };
     const draw = () => {
-      c.root.innerHTML = U.pageHead('Pengaturan sistem', 'Kebijakan ujian, keamanan, dan perawatan aplikasi.', (tab !== 'sistem' && tab !== 'audit') ? '<button class="btn" data-a="a_ssave">' + I('save') + 'Simpan perubahan</button>' : '') +
+      c.root.innerHTML = U.pageHead('Pengaturan sistem', 'Kebijakan ujian, keamanan, dan perawatan aplikasi.', (tab !== 'sistem' && tab !== 'audit' && tab !== 'pengawas') ? '<button class="btn" data-a="a_ssave">' + I('save') + 'Simpan perubahan</button>' : '') +
         '<div class="grid" style="grid-template-columns:220px minmax(0,1fr);align-items:start" id="stg"><div class="card setnav" style="padding:8px"><div class="col g4">' + TABS.map(t => '<a class="row g8" style="padding:10px 12px;border-radius:8px;font-weight:600;font-size:14px;' + (tab === t[0] ? 'background:var(--soft);color:var(--primary-c)' : 'color:var(--muted)') + '" href="#/pengaturan?t=' + t[0] + '">' + I(t[2], 'sm') + t[1] + '</a>').join('') + '</div></div><div class="card" id="stp">' + (val ? pane() : U.skel(4, 44)) + '</div></div>';
       if (window.innerWidth < 800) $('#stg').style.gridTemplateColumns = '1fr';
       bindLogo();
@@ -284,9 +309,16 @@
     draw();
     A.call('set.get', {}, { read: true }).then(j => { val = Object.assign({}, j.setting); info = j.info; TKA._sv = val; draw(); }).catch(U.err);
     if (tab === 'audit') A.call('audit.list', { limit: 150 }, { read: true }).then(j => { logs = j.log; draw(); });
-    return () => { TKA._sv = null; };
+    if (tab === 'pengawas') {
+      TKA._pwLoad = (id) => A.call('lap.pengawas', id ? { id_jadwal: id } : {}, { read: true }).then(j => { pw = j; TKA._pwCur = j.id_jadwal; draw(); }).catch(e => { pw = { error: (e && e.message) || 'Gagal memuat laporan.' }; draw(); });
+      TKA._pwLoad(c.q.get('j') || '');
+      pwTimer = setInterval(() => { if (!document.hidden && TKA._pwLoad) TKA._pwLoad(TKA._pwCur); }, 20000);
+    }
+    return () => { TKA._sv = null; TKA._pwLoad = null; clearInterval(pwTimer); };
   });
   inp.a_sv = el => { if (TKA._sv) TKA._sv[el.dataset.k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value; };
+  inp.a_pw_j = el => { if (TKA._pwLoad) TKA._pwLoad(el.value); };
+  act.a_pw_refresh = () => { if (TKA._pwLoad) TKA._pwLoad(TKA._pwCur); };
   act.a_ssave = async el => {
     if (!TKA._sv) return; el.disabled = true;
     try { const j = await A.call('set.save', { setting: TKA._sv }); Object.assign(S.setting, j.setting); TKA.refreshBoot().catch(() => {}); U.toast('Pengaturan disimpan.', 'ok'); } catch (e) { U.err(e); }
