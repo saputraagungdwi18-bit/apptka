@@ -414,3 +414,31 @@ body:has(.and){background:var(--primary-c)}
 .kh-pill{border:none;border-radius:999px;padding:12px 22px;background:linear-gradient(90deg,#0a6fd6,#10b8a4);color:#fff;font-weight:800;box-shadow:0 8px 18px rgba(10,111,214,.3);display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .kh-ghost{border:none;background:transparent;color:#0a6fd6;font-weight:700;padding:10px 12px;cursor:pointer}
 @media(max-width:560px){.kh-grid2{grid-template-columns:1fr}}
+
+/* ---- Daftar hadir: gaya bersih (header gradasi ungu-pink, lengkung, kartu putih, garis isian) ---- */
+.kv-wrap{background:#faf9ff;border-radius:22px;overflow:hidden}
+.kv-head{background:linear-gradient(135deg,#6b5cb8 0%,#9a6fc0 55%,#e6b3cf 100%);color:#fff;padding:22px 20px 14px;text-align:center}
+.kv-ic{width:56px;height:56px;margin:0 auto 8px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center}
+.kv-ic .i{font-size:28px;color:#fff}
+.kv-hk{font-size:11px;letter-spacing:.14em;opacity:.85;text-transform:uppercase}
+.kv-ht{font-size:20px;font-weight:700;margin-top:2px}
+.kv-hs{font-size:13px;opacity:.9;margin-top:4px}
+.kv-wave{display:block;width:100%;height:36px;margin-top:-1px}
+.kv-body{padding:8px 22px 22px;display:flex;flex-direction:column;gap:10px}
+.kv-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.kv-sec{font-size:13px;font-weight:700;color:#4b3f72;margin-top:14px}
+.kv-tw{max-height:38vh;overflow:auto;background:#fff;border-radius:16px;padding:4px 12px;box-shadow:0 4px 16px rgba(107,92,184,.08)}
+.kv-tbl{width:100%;border-collapse:collapse}
+.kv-tbl th{font-size:10px;color:#8b8aa3;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:10px 8px;border-bottom:1px solid #ebe8f5}
+.kv-tbl td{padding:9px 8px;border-bottom:1px solid #f3f1fa;vertical-align:middle}
+.kv-form{background:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 4px 16px rgba(107,92,184,.08)}
+.kv-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.kv-field{display:flex;flex-direction:column;gap:2px}
+.kv-field label{font-size:10px;color:#8b8aa3;text-transform:uppercase;letter-spacing:.08em}
+.kv-sel{border:none;border-bottom:1px solid #d6d3e8;background:transparent;padding:8px 0;font:inherit;font-size:15px;color:#2a2550;outline:none;width:100%}
+.kv-sel:focus{border-bottom-color:#7e6fd0}
+.kv-pill{border:none;border-radius:999px;padding:12px 24px;background:linear-gradient(90deg,#7b6bc7,#c890bf);color:#fff;font-weight:700;letter-spacing:.02em;box-shadow:0 8px 20px rgba(123,107,199,.3);cursor:pointer}
+.kv-ghost{border:none;background:transparent;color:#7b6bc7;font-weight:600;padding:10px;cursor:pointer}
+@media(max-width:560px){.kv-grid2{grid-template-columns:1fr}}
+.kv-ta{border:none;border-bottom:1px solid #d6d3e8;background:transparent;padding:8px 0;font:inherit;font-size:15px;color:#2a2550;outline:none;width:100%;resize:vertical}
+.kv-ta:focus{border-bottom-color:#7e6fd0}

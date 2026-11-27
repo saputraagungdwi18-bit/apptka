@@ -5,6 +5,17 @@
   const AUTH = 'tka:auth', PUB = 'tka:pub';
   let cleanup = null, rid = 0, started = false;
 
+  // ------------------------------------------------------------ splash
+  const splashT0 = Date.now();
+  // minMs: lama splash ditampilkan sejak aplikasi dibuka (halaman masuk = 5 detik; sudah masuk = langsung hilang).
+  TKA.hideSplash = function (minMs) {
+    const s = document.getElementById('splash');
+    if (!s || s.classList.contains('out')) return;
+    const min = minMs === undefined ? 5000 : minMs;
+    const tunggu = Math.max(0, min - (Date.now() - splashT0));
+    setTimeout(() => { s.classList.add('out'); setTimeout(() => s.remove(), 550); }, tunggu);
+  };
+
   // ------------------------------------------------------------ sesi
   const tokExp = t => { try { return JSON.parse(atob(String(t).split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).x || 0; } catch (e) { return 0; } };
   // Sesi selalu disimpan di penyimpanan lokal perangkat, sehingga aplikasi tetap masuk setelah ditutup.
@@ -37,7 +48,7 @@
 
   // ------------------------------------------------------------ login
   function showLogin(msg) {
-    started = false;
+    started = false; TKA.hideSplash(5000);
     try { Object.assign(S.setting, JSON.parse(localStorage.getItem(PUB) || '{}')); } catch (e) {}
     const st = S.setting, nm = st.nama_sekolah || 'Simulasi TKA';
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !navigator.standalone;
@@ -84,9 +95,7 @@
     if (!u || !p) return lerr('Isi ' + (S.role === 'siswa' ? 'NISN' : 'username') + ' dan kata sandi.');
     if (S.role === 'siswa' && !/^\d{10}$/.test(u)) return lerr('NISN terdiri dari 10 digit angka.');
     if (S.role === 'guru' && !/^\d{8,18}$/.test(u)) return lerr('NIP terdiri dari 8–18 digit angka.');
-    const andEl = document.querySelector('.and');
-    btn.disabled = true; btn.classList.add('loading'); if (andEl) andEl.classList.add('busy');
-    btn.innerHTML = '<span class="lg-spin"></span>Memeriksa<span class="lg-dots"><i>.</i><i>.</i><i>.</i></span>'; lerr('');
+    btn.disabled = true; btn.innerHTML = '<span class="sk" style="width:18px;height:18px;border-radius:50%"></span> Memeriksa...'; lerr('');
     try {
       const j = await A.call('auth.login', { peran: S.role, username: u, password: p });
       A.token = j.token; S.user = j.user; pubSetting(j.setting);
@@ -96,7 +105,7 @@
       enterApp();
       if (!S.boot) TKA.refreshBoot().then(() => route()).catch(U.err);
     } catch (e) {
-      btn.disabled = false; btn.classList.remove('loading'); if (andEl) andEl.classList.remove('busy'); btn.innerHTML = 'Masuk ' + I('arrow_forward');
+      btn.disabled = false; btn.innerHTML = 'Masuk ' + I('arrow_forward');
       lerr(e.message); const pw = $('#lp'); if (pw) { pw.value = ''; pw.focus(); }
     }
   }
@@ -104,14 +113,14 @@
   // ------------------------------------------------------------ kerangka
   const NAV = {
     siswa: [['beranda', 'home', 'Beranda'], ['paket', 'assignment', 'Daftar Paket'], ['riwayat', 'history', 'Riwayat'], ['bantuan', 'help', 'Bantuan']],
-    guru: [['dashboard', 'dashboard', 'Dashboard'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['pengawasan', 'supervisor_account', 'Jadwal Pengawasan'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis']],
+    guru: [['dashboard', 'dashboard', 'Dashboard'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis']],
     admin: [['dashboard', 'dashboard', 'Dashboard'], ['pengguna', 'group', 'Manajemen Pengguna'], ['pengaturan-guru', 'manage_accounts', 'Pengaturan Guru & Pengawas'], ['cetak', 'id_card', 'Cetak Kartu & Data Pengguna'], ['kelas-mapel', 'school', 'Kelas Mapel & Ruang'], ['soal', 'quiz', 'Bank Soal'], ['paket-ujian', 'inventory_2', 'Paket Ujian'], ['jadwal', 'event', 'Jadwal Ujian'], ['monitoring', 'monitor_heart', 'Monitoring Live'], ['laporan', 'analytics', 'Laporan & Analisis'], ['pengaturan', 'settings', 'Pengaturan Sistem']]
   };
   function ensureShell() {
     const role = S.user.peran, app = document.getElementById('app');
     if (app.dataset.shell === role && $('#view')) return;
     app.dataset.shell = role;
-    const nm = S.setting.nama_sekolah || 'Simulasi TKA', links = (NAV[role] || []).filter(l => !menuGuruOff(l[0]));
+    const nm = S.setting.nama_sekolah || 'Simulasi TKA', links = NAV[role];
     if (role === 'siswa') {
       app.innerHTML = '<header class="top"><div class="brand">' + U.logoEl(S.setting.logo_url, '36px') + '<span class="t">' + esc(nm) + '</span></div>' +
         '<nav>' + links.map(l => '<a href="#/' + l[0] + '" data-nav="' + l[0] + '">' + I(l[1], 'sm') + l[2] + '</a>').join('') + '</nav>' +
@@ -133,6 +142,7 @@
 
   function enterApp() {
     started = true;
+    TKA.hideSplash(0);
     document.getElementById('app').dataset.shell = '';
     if (!location.hash || location.hash === '#') location.hash = '#/' + (S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
     ensureShell();
@@ -154,12 +164,6 @@
     return null;
   }
   TKA.go = p => { const h = '#/' + p; if (location.hash === h) route(); else location.hash = h; };
-  // Saklar menu guru: 'paket-ujian' dan 'jadwal'/'pengawasan' dapat dinonaktifkan admin.
-  function menuGuruOff(sec) {
-    if (!S.user || S.user.peran !== 'guru') return false;
-    const k = sec === 'paket-ujian' ? 'menu_paket_guru' : (sec === 'jadwal' || sec === 'pengawasan') ? 'menu_jadwal_guru' : sec === 'soal' ? 'menu_soal_guru' : '';
-    return !!k && S.setting[k] === '0';
-  }
   async function route() {
     if (!S.user || !started) return;
     const my = ++rid;
@@ -169,7 +173,6 @@
     const m = match(S.user.peran, path) || match(S.user.peran, S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
     ensureShell();
     const sec = (path.split('/')[0]) || (S.user.peran === 'siswa' ? 'beranda' : 'dashboard');
-    if (menuGuruOff(sec)) { const v0 = $('#view'); if (v0) v0.innerHTML = U.empty('block', 'Menu ini dinonaktifkan', 'Hubungi admin untuk mengaktifkannya kembali.'); return; }
     U.$$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === sec || (sec === 'hasil' && a.dataset.nav === 'riwayat')));
     const side = $('#side'); if (side) { side.classList.remove('open'); $('#scrim').classList.remove('open'); }
     const root = $('#view'); root.dataset.live = '';
@@ -233,8 +236,7 @@
     const del = h.$('#fdel');
     if (del) del.onclick = async () => { try { const body = { hapus: true }; if (!self) body.id = u.id; await A.call('pengguna.foto', body); done(''); } catch (e) { U.err(e); } };
     // Guru mengatur sendiri kelas yang diajarnya (dipakai untuk membatasi jadwal ujian). Pilihan berupa chip.
-    const KELAS_AJAR_AKTIF = true;
-    if (KELAS_AJAR_AKTIF && self && S.user.peran === 'guru') {
+    if (self && S.user.peran === 'guru') {
       const kelasAll = (S.boot && S.boot.kelas) || [];
       const sel = new Set(String((S.boot && S.boot.profil && S.boot.profil.kelas_ajar) || '').split(',').filter(Boolean));
       let awal = Array.from(sel).sort().join(',');

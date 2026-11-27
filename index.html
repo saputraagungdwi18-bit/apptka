@@ -30,11 +30,45 @@
       document.fonts.load('24px "Material Symbols Outlined"', 'home').then(function (f) { if (f && f.length) d.classList.add('fi'); }).catch(function () {});
     })();
   </script>
+  <style>
+    #splash{position:fixed;inset:0;z-index:1000;background:#1e3a5f;display:flex;align-items:center;justify-content:center;transition:opacity .5s ease,visibility .5s;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+    #splash.out{opacity:0;visibility:hidden}
+    .sp-wrap{text-align:center;color:#fff}
+    .sp-ring{position:relative;width:168px;height:168px;margin:0 auto}
+    .sp-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+    .sp-track{fill:none;stroke:rgba(255,255,255,.14);stroke-width:2.5}
+    .sp-arc{fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:70 220;transform-origin:50% 50%;animation:sp-spin 1.4s cubic-bezier(.5,.1,.5,.9) infinite}
+    .sp-logo{position:absolute;left:50%;top:50%;width:84px;height:84px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transform:translate(-50%,-50%) scale(.85);animation:sp-in .7s .1s cubic-bezier(.2,.8,.2,1) forwards}
+    .sp-title{margin:28px 0 6px;font:700 22px/28px Inter,system-ui,-apple-system,sans-serif;letter-spacing:.04em;opacity:0;animation:sp-up .6s .35s ease forwards}
+    .sp-sub{margin:0;font:400 14px/20px Inter,system-ui,-apple-system,sans-serif;color:rgba(255,255,255,.75);opacity:0;animation:sp-up .6s .5s ease forwards}
+    .sp-dots i{font-style:normal;animation:sp-blink 1.2s infinite both}
+    .sp-dots i:nth-child(2){animation-delay:.2s}.sp-dots i:nth-child(3){animation-delay:.4s}
+    @keyframes sp-spin{to{transform:rotate(360deg)}}
+    @keyframes sp-in{to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+    @keyframes sp-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    @keyframes sp-blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+    @media (prefers-reduced-motion:reduce){.sp-arc,.sp-dots i{animation:none}.sp-logo,.sp-title,.sp-sub{animation:none;opacity:1;transform:translate(-50%,-50%)}.sp-title,.sp-sub{transform:none}}
+  </style>
+  <script>setTimeout(function(){var s=document.getElementById("splash");if(s)s.classList.add("out");},8000);</script>
 </head>
 <body>
-  <div id="splash" aria-hidden="true"><div class="sp-box"><div class="sp-ring"></div><img class="sp-logo" src="icons/icon-192.png" alt=""><div class="sp-name">Simulasi TKA</div><div class="sp-sub">Memuat aplikasi<span class="sp-dots"><i>.</i><i>.</i><i>.</i></span></div></div></div>
-  <script>(function(){var s=document.getElementById("splash");if(!s)return;var masuk=false;try{masuk=!!(localStorage.getItem("tka:auth")||sessionStorage.getItem("tka:auth"));}catch(e){}if(masuk){s.remove();return;}setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove();},700);},5000);})();</script>
-  <div id="app"><div class="login"><div class="login-card tc"><div class="sk" style="height:56px;width:56px;border-radius:14px;margin:0 auto"></div><p class="sm muted mt16">Memuat aplikasi…</p></div></div></div>
+  <div id="splash" aria-hidden="true"><div class="sp-wrap"><div class="sp-ring"><svg viewBox="0 0 100 100"><circle class="sp-track" cx="50" cy="50" r="46"/><circle class="sp-arc" cx="50" cy="50" r="46"/></svg><img class="sp-logo" src="icons/icon-192.png" alt=""></div><h1 class="sp-title">Simulasi TKA</h1><p class="sp-sub">Memuat aplikasi<span class="sp-dots"><i>.</i><i>.</i><i>.</i></span></p></div></div>
+  <div id="app"></div>
+  <script>
+    // Splash hanya untuk halaman masuk. Jika sesi masih berlaku, splash dilewati (refresh terasa seperti biasa).
+    (function () {
+      try {
+        var raw = localStorage.getItem('tka:auth') || sessionStorage.getItem('tka:auth');
+        var a = raw ? JSON.parse(raw) : null, exp = 0;
+        if (a && a.token) {
+          var b = a.token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+          while (b.length % 4) b += '=';
+          exp = JSON.parse(atob(b)).x || 0;
+        }
+        if (exp > Date.now() + 60000) { var s = document.getElementById('splash'); if (s) s.remove(); }
+      } catch (e) {}
+    })();
+  </script>
   <noscript><p style="padding:24px">Aplikasi ini memerlukan JavaScript.</p></noscript>
   <script>
     // Nonaktifkan pinch-to-zoom dan zoom ganda-ketuk (iOS Safari mengabaikan meta viewport, jadi dicegah juga di sini).
