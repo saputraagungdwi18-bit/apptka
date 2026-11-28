@@ -90,25 +90,31 @@
     return kartuHtml + '<!--pw-list-->' + daftarHtml;
   }
 
+  // ---- Dashboard guru: kotak berwarna (hanya tampilan; data tetap dari server) ----
+  // Warna kotak dari Pengaturan Sistem (Warna dashboard guru); kosong = pakai warna bawaan kelas CSS
+  const warnaKt = key => { const w = key && S.setting ? S.setting[key] : ''; return /^#[0-9a-f]{6}$/i.test(w || '') ? ' style="--kt:' + w.toLowerCase() + '"' : ''; };
+  const ktStat = (cls, ic, n, label, key) => '<div class="kt ' + cls + '"' + warnaKt(key) + '><div class="kt-ic">' + U.i(ic, 'lg') + '</div><div class="kt-n">' + n + '</div><div class="kt-l">' + esc(label) + '</div></div>';
+  const ktMenu = (cls, ic, label, href, key) => '<a class="kt kt-m ' + cls + '" href="' + href + '"' + warnaKt(key) + '><div class="kt-ic">' + U.i(ic, 'lg') + '</div><div class="kt-lb">' + esc(label) + '</div></a>';
+  function ktAksi() {
+    const out = [];
+    if (!TKA.menuGuruOff('menu_jadwal_guru')) out.push(ktMenu('c-abu', 'assignment_ind', 'Jadwal Pengawas', '#/pengawasan', 'warna_jadwal_pengawas'));
+    if (!TKA.menuGuruOff('menu_soal_guru')) out.push(ktMenu('c-biru', 'edit_note', 'Buat soal', '#/soal/baru'));
+    if (!TKA.menuGuruOff('menu_paket_guru')) out.push(ktMenu('c-ungu', 'inventory_2', 'Buat paket', '#/paket-ujian/baru'));
+    if (!TKA.menuGuruOff('menu_jadwal_guru')) out.push(ktMenu('c-kuning', 'event', 'Buat jadwal', '#/jadwal?baru=1', 'warna_buat_jadwal'));
+    out.push(ktMenu('c-merah', 'monitor_heart', 'Monitoring', '#/monitoring', 'warna_monitoring'));
+    out.push(ktMenu('c-hijau', 'analytics', 'Laporan', '#/laporan', 'warna_laporan'));
+    return out.join('');
+  }
+
   TKA.route('guru', 'dashboard', function (c) {
     c.live();
-    let pwHtml = '', pwAt = 0;
-    const pwRender = async () => { pwAt = Date.now(); pwHtml = await pengawasanHtml(); const [pk, pd = ''] = pwHtml.split('<!--pw-list-->'); const k = c.root.querySelector('#dpw-kartu'), d = c.root.querySelector('#dpw-daftar'); if (k) k.innerHTML = pk; if (d) d.innerHTML = pd; };
     const draw = () => {
       const b = S.boot || {}, st = b.stats || {}, jd = b.jadwal || [], now = A.now();
-      const pwSplit = (pwHtml || '').split('<!--pw-list-->');
       c.root.innerHTML = U.pageHead('Halo, ' + esc(String(S.user.nama).split(',')[0]), 'Ringkasan bank soal, jadwal, dan hasil ujian.') +
-        '<div id="dpw-kartu">' + pwSplit[0] + '</div>' +
-        '<div class="grid gs4 mb16 statrow">' + U.stat('quiz', U.rb(st.soal || 0), 'Total soal' + (st.draft ? ' · ' + st.draft + ' draf' : '')) + U.stat('inventory_2', st.paket || 0, 'Paket terpublikasi') + U.stat('monitor_heart', st.berlangsung || 0, 'Ujian berlangsung', st.berlangsung ? 'ok' : '') + U.stat('analytics', st.rata || 0, 'Rata-rata skor (' + (st.selesai || 0) + ' hasil)', 'warn') + '</div>' +
-        (TKA.menuGuruOff('menu_jadwal_guru') ? '' : '<div class="card pad0"><div class="card-h"><h3>Ujian terdekat</h3><a class="sm b" href="#/jadwal">Semua jadwal →</a></div>' +
-        (jd.length ? '<div class="tw"><table><thead><tr><th>Kode</th><th>Paket</th><th class="hm">Kelas</th><th>Waktu</th><th>Token</th><th>Status</th><th></th></tr></thead><tbody>' + jd.map(j => {
-          const live = j.mulai <= now && now <= j.selesai;
-          return '<tr><td class="mono sm">' + esc(j.kode) + '</td><td><b>' + esc(j.paket) + '</b><div class="xs muted">' + esc(j.mapel) + '</div></td><td class="sm hm">' + esc(j.kelas_nama.join(', ')) + '</td><td class="sm">' + U.tglJam(j.mulai) + '<div class="xs muted">s.d. ' + U.jam(j.selesai) + '</div></td><td><span class="mono b">' + esc(j.token) + '</span></td><td>' + (live ? U.badge('Berlangsung', 'ok') : U.badge('Terjadwal', 'info')) + '</td><td class="tr">' + (live ? '<a class="btn sm" href="#/monitoring?j=' + j.id_jadwal + '">Pantau</a>' : '') + '</td></tr>';
-        }).join('') + '</tbody></table></div>' : U.empty('event_available', 'Belum ada jadwal mendatang', 'Buat jadwal agar siswa dapat mengerjakan simulasi.', '<a class="btn mt16" href="#/jadwal?baru=1">Buat jadwal</a>')) + '</div>') + '<div id="dpw-daftar">' + (pwSplit[1] || '') + '</div>';
+        '<div class="kt-grid">' + ktStat('c-ungu', 'quiz', U.rb(st.soal || 0), 'Total soal' + (st.draft ? ' · ' + st.draft + ' draf' : ''), 'warna_total_soal') + ktStat('c-biru', 'inventory_2', st.paket || 0, 'Paket terpublikasi', 'warna_paket') + ktStat(st.berlangsung ? 'c-hijau' : 'c-abu', 'monitor_heart', st.berlangsung || 0, 'Ujian berlangsung', 'warna_berlangsung') + ktStat('c-merah', 'analytics', st.rata || 0, 'Rata-rata skor (' + (st.selesai || 0) + ' hasil)', 'warna_rata') + '</div>' + '<div class="kt-aksi">' + ktAksi() + '</div>';
     };
     draw();
-    pwRender();
-    const t = setInterval(() => { if (!document.hidden) { draw(); if (Date.now() - pwAt > 30000) pwRender(); } }, 30000);
+    const t = setInterval(() => { if (!document.hidden) draw(); }, 30000);
     return () => clearInterval(t);
   });
 
@@ -518,7 +524,7 @@ act.g_ke_paket_baru = () => {
   const tglPanjang = ms => new Date(ms).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   TKA.route('guru', 'pengawasan', function (c) {
     c.live();
-    let list = null;
+    let list = null, kartu = null;
     const draw = () => {
       const now = A.now(), saya = S.user.id;
       if (list === null) { c.root.innerHTML = U.pageHead('Jadwal Pengawasan', 'Hari, tanggal, ruang, dan waktu ujian yang Anda awasi.') + '<div class="card">' + U.empty('hourglass_empty', 'Memuat jadwal…', '') + '</div>'; return; }
@@ -532,11 +538,14 @@ act.g_ke_paket_baru = () => {
               '<td>' + esc(ruangTxt(j)) + '</td><td class="mono">' + U.jam(j.mulai) + ' – ' + U.jam(j.selesai) + '</td><td>' + U.badge(st[0], st[1]) + '</td></tr>';
           }).join('') + '</tbody></table></div>'
         : U.empty('event_available', 'Belum ada jadwal pengawasan', 'Jadwal akan muncul di sini setelah admin membuat jadwal ujian dan Anda ditetapkan sebagai pengawas.');
-      c.root.innerHTML = U.pageHead('Jadwal Pengawasan', 'Hari, tanggal, ruang, dan waktu ujian yang Anda awasi.') + '<div class="card pad0">' + body + '</div>';
+      const atas = kartu === null ? '' : kartu.replace('<!--pw-list-->', '');
+      c.root.innerHTML = U.pageHead('Jadwal Pengawasan', 'Hari, tanggal, ruang, dan waktu ujian yang Anda awasi.') + atas + '<div class="card pad0">' + body + '</div>';
     };
     draw();
+    const muatKartu = () => pengawasanHtml().then(h => { kartu = h; draw(); }).catch(() => {});
+    muatKartu();
     D.swr('jadwal', v => { list = v; draw(); }).catch(U.err);
-    const t = setInterval(() => { if (!document.hidden) D.swr('jadwal', v => { list = v; draw(); }, 60000).catch(() => {}); }, 60000);
+    const t = setInterval(() => { if (!document.hidden) { D.swr('jadwal', v => { list = v; draw(); }, 60000).catch(() => {}); muatKartu(); } }, 60000);
     return () => clearInterval(t);
   });
 
