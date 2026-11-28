@@ -35,6 +35,22 @@
   // ============================================================ DASHBOARD GURU
   // ---- Dashboard guru: Jadwal pengawasan (ruang, tanggal, waktu, mapel, daftar hadir) ----
   const TGL_PANJANG = ms => new Date(ms).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  // Ruang yang diawasi guru ini pada satu jadwal (sama dengan aturan server: pengawas per ruang, atau daftar pengawas jadwal bila per-ruang kosong)
+  function ruangSaya(j, saya) {
+    const ids = j.ruang || [], nama = j.ruang_nama || [], pr = j.pengawas_ruang || {};
+    const hasil = [];
+    ids.forEach((r, i) => {
+      const lst = Array.isArray(pr[r]) && pr[r].length ? pr[r] : (j.pengawas || []);
+      if (lst.indexOf(saya) > -1) hasil.push(nama[i] || r);
+    });
+    return hasil;
+  }
+  const ruangUntukPengawas = (j, saya) => {
+    const r = ruangSaya(j, saya);
+    if (r.length) return r.join(', ');
+    return (j.ruang_nama && j.ruang_nama.length) ? j.ruang_nama.join(', ') : ((j.kelas_nama || []).length ? 'Kelas ' + j.kelas_nama.join(', ') : '—');
+  };
+
   async function pengawasanHtml() {
     const jdOn = !TKA.menuGuruOff('menu_jadwal_guru');
     if (!jdOn) return '';
@@ -55,7 +71,7 @@
     };
     const hariIni = list.filter(j => j.mulai < awal.getTime() + 86400000 && j.selesai >= awal.getTime()).length;
     const kartu = list.map(j => {
-      const ruang = (j.ruang_nama && j.ruang_nama.length) ? j.ruang_nama.join(', ') : ((j.kelas_nama || []).length ? 'Kelas ' + j.kelas_nama.join(', ') : '—');
+      const ruang = ruangUntukPengawas(j, saya);
       return '<div class="sh-card dp-jc"><div class="dp-ruang">' + esc(ruang) + '</div>' +
         '<div class="sh-ct">' + esc(TGL_PANJANG(j.mulai)) + '</div>' +
         '<div class="sm muted">' + I('schedule', 'sm') + ' ' + U.jam(j.mulai) + ' – ' + U.jam(j.selesai) + '</div>' +
@@ -507,7 +523,7 @@ act.g_ke_paket_baru = () => {
       const now = A.now(), saya = S.user.id;
       if (list === null) { c.root.innerHTML = U.pageHead('Jadwal Pengawasan', 'Hari, tanggal, ruang, dan waktu ujian yang Anda awasi.') + '<div class="card">' + U.empty('hourglass_empty', 'Memuat jadwal…', '') + '</div>'; return; }
       const rows = list.filter(j => (j.pengawas || []).indexOf(saya) > -1).sort((a, b) => a.mulai - b.mulai);
-      const ruangTxt = j => (j.ruang_nama && j.ruang_nama.length) ? j.ruang_nama.join(', ') : ((j.kelas_nama || []).join(', ') || '—');
+      const ruangTxt = j => ruangUntukPengawas(j, saya);
       const body = rows.length
         ? '<div class="tw"><table><thead><tr><th>No</th><th>Hari, tanggal</th><th>Ruang</th><th>Waktu ujian</th><th>Status</th></tr></thead><tbody>' +
           rows.map((j, i) => {

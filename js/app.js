@@ -95,7 +95,10 @@
     if (!u || !p) return lerr('Isi ' + (S.role === 'siswa' ? 'NISN' : 'username') + ' dan kata sandi.');
     if (S.role === 'siswa' && !/^\d{10}$/.test(u)) return lerr('NISN terdiri dari 10 digit angka.');
     if (S.role === 'guru' && !/^\d{8,18}$/.test(u)) return lerr('NIP terdiri dari 8–18 digit angka.');
-    btn.disabled = true; btn.innerHTML = '<span class="sk" style="width:18px;height:18px;border-radius:50%"></span> Memeriksa...'; lerr('');
+    // Animasi loading saat Masuk (siswa, guru/pengawas, admin): tombol berkilau + spinner + titik berjalan
+    btn.disabled = true; btn.classList.add('loading');
+    btn.innerHTML = '<span class="lg-spin" aria-hidden="true"></span>Memeriksa<span class="lg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>';
+    lerr('');
     try {
       const j = await A.call('auth.login', { peran: S.role, username: u, password: p });
       A.token = j.token; S.user = j.user; pubSetting(j.setting);
@@ -105,7 +108,7 @@
       enterApp();
       if (!S.boot) TKA.refreshBoot().then(() => route()).catch(U.err);
     } catch (e) {
-      btn.disabled = false; btn.innerHTML = 'Masuk ' + I('arrow_forward');
+      btn.disabled = false; btn.classList.remove('loading'); btn.innerHTML = 'Masuk ' + I('arrow_forward');
       lerr(e.message); const pw = $('#lp'); if (pw) { pw.value = ''; pw.focus(); }
     }
   }

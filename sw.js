@@ -2,7 +2,7 @@
    - Cangkang aplikasi (HTML/CSS/JS/ikon) di-cache → aplikasi terbuka cepat dan tetap terbuka saat offline.
    - Permintaan ke Google Apps Script (POST) TIDAK PERNAH dicegat/di-cache: data & kunci jawaban selalu dari server.
    - Naikkan VERSI setiap kali Anda menerbitkan pembaruan agar cache lama dibuang. */
-const VERSI = 'tka-v51';
+const VERSI = 'tka-v53';
 const SHELL = ['./', './index.html', './css/style.css', './js/config.js', './js/ui.js', './js/api.js', './js/app.js', './js/siswa.js', './js/guru.js', './js/admin.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
