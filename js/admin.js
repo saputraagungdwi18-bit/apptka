@@ -277,7 +277,29 @@
       '<p class="xs muted mt16">Status hadir mengikuti tanda tangan pengawas. Halaman diperbarui otomatis setiap 20 detik.</p>';
   }
 
-  const TABS = [['umum', 'Identitas', 'badge'], ['ujian', 'Kebijakan ujian', 'rule'], ['aman', 'Keamanan', 'shield'], ['menu', 'Menu guru', 'toggle_on'], ['pengawas', 'Laporan pengawas', 'supervisor_account'], ['sistem', 'Sistem & kuota', 'dns'], ['audit', 'Log audit', 'history']];
+  // Warna kotak dashboard guru (Pengaturan Sistem → Warna dashboard guru)
+  const WARNA_KT = [['warna_total_soal', 'Total soal', '#6d28d9'], ['warna_paket', 'Paket terpublikasi', '#2563eb'], ['warna_berlangsung', 'Ujian berlangsung', '#0f9d7a'], ['warna_rata', 'Rata-rata skor', '#e11d48'], ['warna_jadwal_pengawas', 'Jadwal Pengawas', '#64748b'], ['warna_buat_jadwal', 'Buat jadwal', '#d97706'], ['warna_monitoring', 'Monitoring', '#e11d48'], ['warna_laporan', 'Laporan', '#0f9d7a']];
+  // Perbarui kotak contoh & kode heksa pada baris warna (dipanggil saat warna dipilih / dikembalikan)
+  function warnaLive(el, hex) {
+    const row = el.closest('.row');
+    if (!row) return;
+    const sw = row.querySelector('[data-sw]'), hx = row.querySelector('[data-hex]');
+    if (sw) { sw.style.background = hex; sw.style.boxShadow = '0 6px 14px -8px ' + hex; }
+    if (hx) hx.textContent = hex;
+  }
+  function warnaPane(v) {
+    v = v || {};
+    const baris = WARNA_KT.map(([k, l, def]) => {
+      const cur = /^#[0-9a-f]{6}$/i.test(v[k] || '') ? v[k].toLowerCase() : def;
+      return '<div class="row sp g12" style="align-items:center;padding:12px 0;border-bottom:1px solid #e2e8f0">' +
+        '<span class="row g12" style="align-items:center"><span data-sw style="width:34px;height:34px;border-radius:11px;background:' + cur + ';box-shadow:0 6px 14px -8px ' + cur + '"></span><span><b class="sm">' + esc(l) + '</b><br><span class="xs muted mono" data-hex>' + cur + '</span></span></span>' +
+        '<input type="color" data-i="a_sv" data-k="' + k + '" value="' + cur + '" aria-label="Warna ' + esc(l) + '" style="width:48px;height:34px;border:none;background:none;padding:0;cursor:pointer"></div>';
+    }).join('');
+    return '<div class="col g8"><p class="sm muted mb8">Atur warna kotak di dashboard guru. Perubahan berlaku setelah disimpan; guru melihatnya saat memuat ulang aplikasi.</p>' + baris +
+      '<div class="row mt16" style="justify-content:flex-end"><button class="btn sec sm" data-a="a_warna_reset">' + I('restart_alt', 'sm') + 'Kembalikan warna bawaan</button></div></div>';
+  }
+
+  const TABS = [['umum', 'Identitas', 'badge'], ['ujian', 'Kebijakan ujian', 'rule'], ['aman', 'Keamanan', 'shield'], ['menu', 'Menu guru', 'toggle_on'], ['warna', 'Warna dashboard guru', 'palette'], ['pengawas', 'Laporan pengawas', 'supervisor_account'], ['sistem', 'Sistem & kuota', 'dns'], ['audit', 'Log audit', 'history']];
   TKA.route('admin', 'pengaturan', function (c) {
     let tab = c.q.get('t') || 'umum', val = null, info = null, logs = null, pw = null, pwTimer = null;
     const T = (k, l, tip) => '<div class="field"><label>' + l + '</label><input class="input" data-i="a_sv" data-ev="input" data-k="' + k + '" value="' + esc(val[k]) + '">' + (tip ? '<span class="hint">' + tip + '</span>' : '') + '</div>';
@@ -287,6 +309,7 @@
       if (tab === 'umum') return '<div class="col g16">' + T('nama_sekolah', 'Nama sekolah') + T('tahun_ajaran', 'Tahun ajaran', 'mis. 2024/2025') + logoUi(val) + T('wa_proktor', 'Nomor WhatsApp pengawas (opsional)', 'Format 62812xxxxxxx. Tampil di menu Bantuan siswa.') + '</div>';
       if (tab === 'ujian') return '<div class="col g16"><div class="grid g2">' + N('kkm_default', 'KKM bawaan (0–100)', 'Dipakai sebagai nilai awal saat membuat paket. Skor siswa juga 0–100.', 0, 100) + N('durasi_default', 'Durasi bawaan (menit)', '', 5, 300) + '</div><div class="alert info">' + I('info') + '<span>Skor tiap soal memakai poin. Atur poin di Bank Soal dan Penyusun Paket. Pembahasan, mode aman, token, dan batas pelanggaran kini diatur per paket di Paket Ujian.</span></div>' + SW('acak_soal', 'Acak urutan soal (bawaan paket baru)', 'Setiap siswa mendapat urutan berbeda.') + SW('acak_opsi', 'Acak pilihan jawaban (bawaan paket baru)', '') + SW('tampil_pembahasan', 'Tampilkan pembahasan setelah ujian', 'Jika dimatikan, siswa hanya melihat skor dan diagnostik.') + SW('wajib_token', 'Wajib token sesi untuk ujian terjadwal', 'Token dibagikan pengawas di ruang ujian.') + '</div>';
       if (tab === 'aman') return '<div class="col g16">' + SW('safe_exam', 'Mode ujian aman (anti-curang)', 'Mendeteksi pindah tab/keluar layar penuh. Sesi dikunci setelah batas pelanggaran dan dibuka pengawas.') + '<div class="grid g3">' + N('batas_pelanggaran', 'Batas pelanggaran', 'Sesi terkunci setelah N pelanggaran.', 1, 10) + N('autosave_detik', 'Interval autosave (detik)', 'Makin kecil makin aman, tetapi makin berat bagi kuota.', 10, 120) + N('polling_monitoring', 'Segarkan monitoring (detik)', '', 5, 60) + '</div><div class="alert warn">' + I('warning') + '<span>Rekomendasi untuk ≥500 siswa serentak: autosave 30–45 detik.</span></div></div>';
+      if (tab === 'warna') return warnaPane(val);
       if (tab === 'menu') {
         const SW2 = (k, l, tip) => '<label class="row g12" style="align-items:flex-start"><span class="sw" style="margin-top:2px"><input type="checkbox" data-i="a_sv" data-k="' + k + '"' + (val[k] !== '0' ? ' checked' : '') + '><i></i></span><span><b class="sm">' + l + '</b><br><span class="xs muted">' + tip + '</span></span></label>';
         return '<div class="col g16">' +
@@ -316,12 +339,30 @@
     }
     return () => { TKA._sv = null; TKA._pwLoad = null; clearInterval(pwTimer); };
   });
-  inp.a_sv = el => { if (TKA._sv) TKA._sv[el.dataset.k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value; };
+  inp.a_sv = el => {
+    if (TKA._sv) TKA._sv[el.dataset.k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
+    if (el.type === 'color' && el.dataset.k && el.dataset.k.indexOf('warna_') === 0) warnaLive(el, el.value);
+  };
   inp.a_pw_j = el => { if (TKA._pwLoad) TKA._pwLoad(el.value); };
   act.a_pw_refresh = () => { if (TKA._pwLoad) TKA._pwLoad(TKA._pwCur); };
+  act.a_warna_reset = () => {
+    if (!TKA._sv) return;
+    WARNA_KT.forEach(([k, , def]) => { TKA._sv[k] = def; });
+    document.querySelectorAll('input[data-k^="warna_"]').forEach(el => {
+      el.value = TKA._sv[el.dataset.k];
+      warnaLive(el, el.value);
+    });
+    U.toast('Warna dikembalikan ke bawaan. Klik Simpan perubahan.', 'ok');
+  };
   act.a_ssave = async el => {
     if (!TKA._sv) return; el.disabled = true;
-    try { const j = await A.call('set.save', { setting: TKA._sv }); Object.assign(S.setting, j.setting); TKA.refreshBoot().catch(() => {}); U.toast('Pengaturan disimpan.', 'ok'); } catch (e) { U.err(e); }
+    try {
+      const j = await A.call('set.save', { setting: TKA._sv }); Object.assign(S.setting, j.setting); TKA.refreshBoot().catch(() => {});
+      // Jika server belum diperbarui, kunci warna dibuang dan tidak ikut dikembalikan: beri tahu admin, jangan diam-diam
+      const hilang = Object.keys(TKA._sv).filter(k => k.indexOf('warna_') === 0 && !(j.setting && k in j.setting));
+      if (hilang.length) U.toast('Warna BELUM tersimpan: server Apps Script belum diperbarui. Tempel ulang Core.gs & Admin.gs, lalu Terapkan → Kelola deployment → ✏ → Versi baru.', 'err', 9000);
+      else U.toast('Pengaturan disimpan.', 'ok');
+    } catch (e) { U.err(e); }
     el.disabled = false;
   };
   act.a_cache = async el => {
